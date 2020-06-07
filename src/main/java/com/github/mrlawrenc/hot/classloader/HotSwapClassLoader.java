@@ -31,8 +31,12 @@ public class HotSwapClassLoader extends ClassLoader {
 
 
     public HotSwapClassLoader(String classPath, String... otherClz) {
-        this.classPath = new File(classPath).getAbsolutePath();
-        loadHotClass(new File(classPath));
+        if (classPath == null || classPath.trim().length() == 0) {
+            System.out.println("class path is empty");
+        } else {
+            this.classPath = new File(classPath).getAbsolutePath();
+            loadHotClass(new File(classPath));
+        }
     }
 
     public HotSwapClassLoader(String classPath, String fullName) throws Exception {
