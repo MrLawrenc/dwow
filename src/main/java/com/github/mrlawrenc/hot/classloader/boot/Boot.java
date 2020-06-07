@@ -1,6 +1,7 @@
 package com.github.mrlawrenc.hot.classloader.boot;
 
 
+import com.github.mrlawrenc.AgentMain;
 import com.github.mrlawrenc.hot.classloader.HotSwapClassLoader;
 import org.apache.commons.io.monitor.FileAlterationMonitor;
 import org.apache.commons.io.monitor.FileAlterationObserver;
@@ -20,6 +21,24 @@ public class Boot {
                 "_|\"\"\"\"\"|_|\"\"\"\"\"|_|\"\"\"\"\"|_|\"\"\"\"\"|_|\"\"\"\"\"|_|\"\"\"\"\"|_|\"\"\"\"\"|_|\"\"\"\"\"|_|\"\"\"\"\"|_|\"\"\"\"\"|_|\"\"\"\"\"|_|\"\"\"\"\"|_|\"\"\"\"\"|_|\"\"\"\"\"|_|\"\"\"\"\"|_|\"\"\"\"\"|_|\"\"\"\"\"|_|\"\"\"\"\"| {======|_| \"\"\" |_|\"\"\"\"\"|_|\"\"\"\"\"|_|\"\"\"\"\"|_| \"\"\"\"| \n" +
                 "\"`-0-0-'\"`-0-0-'\"`-0-0-'\"`-0-0-'\"`-0-0-'\"`-0-0-'\"`-0-0-'\"`-0-0-'\"`-0-0-'\"`-0-0-'\"`-0-0-'\"`-0-0-'\"`-0-0-'\"`-0-0-'\"`-0-0-'\"`-0-0-'\"`-0-0-'\"`-0-0-'./o--000'\"`-0-0-'\"`-0-0-'\"`-0-0-'\"`-0-0-'\"`-0-0-' \n");
 
+        try {
+
+         /*   ClassPool pool = ClassPool.getDefault();
+            CtClass main = pool.get("com.swust.Main");
+            for (CtMethod method : main.getDeclaredMethods()) {
+                System.out.println("main : "+method.getName());
+            }*/
+
+            //调用main方法
+          /*  System.out.println("invoke proxy main ");
+            Method proxy = Class.forName("com.swust.Main").getDeclaredMethod("main$proxy", String[].class);
+            proxy.invoke(null, (Object) new String[]{"111", "222", "333"});*/
+
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
+
         System.out.println("###############################Hot boot  end###############################");
     }
 
@@ -32,11 +51,12 @@ public class Boot {
     /**
      * 热部署代理入口
      *
-     * @param path 当前需要热部署的class path路径
      * @throws Exception 代理异常
      */
-    public static void run(String path) throws Exception {
-        System.out.println("run ..... "+path);
+    public static void run() throws Exception {
+        String path = AgentMain.agentArgs;
+
+        System.out.println("run ..... " + path);
         HotSwapClassLoader hotSwapClassLoader = new HotSwapClassLoader(path);
         startListenFile(path);
         start0(hotSwapClassLoader);

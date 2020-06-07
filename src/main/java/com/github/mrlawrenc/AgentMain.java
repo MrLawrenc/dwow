@@ -22,7 +22,7 @@ import java.security.ProtectionDomain;
 public class AgentMain {
 
 
-    private CtMethod newMainMethod = null;
+    public static String agentArgs="";
 
     /**
      * jvm启动时调用,支持jdk version >=1.5
@@ -31,6 +31,7 @@ public class AgentMain {
      * @param inst     {@link Instrumentation}
      */
     public static void premain(String agentOps, Instrumentation inst) throws ClassNotFoundException, UnmodifiableClassException {
+        agentArgs=agentOps;
         inst.addTransformer(new ClzInterceptor());
     }
 
@@ -46,12 +47,13 @@ public class AgentMain {
 }
 
 class ClzInterceptor implements ClassFileTransformer {
+    public static boolean changeMain=false;
 
     @SneakyThrows
     @Override
     public byte[] transform(ClassLoader loader, String className, Class<?> classBeingRedefined, ProtectionDomain protectionDomain, byte[] classfileBuffer) throws IllegalClassFormatException {
 
-        if (className.contains("Boot")){
+        if (className.contains("Boot")) {
             //注入main方法的方法体
             CtClass boot = ClassPool.getDefault().get("com.github.mrlawrenc.hot.classloader.boot.Boot");
             CtMethod start = boot.getDeclaredMethod("start");
@@ -62,12 +64,13 @@ class ClzInterceptor implements ClassFileTransformer {
         }
 
         try {
-            String path = "F:\\openSources\\test\\out\\production\\test";
-            if (className.replaceAll("/", ".").contains("com.swust.Main")) {
+
+            if (!changeMain&&className.replaceAll("/", ".").contains("com.swust.Main")) {
                 System.out.println("识别到main方法所在的类：" + className);
 
                 ClassPool classPool = ClassPool.getDefault();
                 CtClass ctClass = classPool.makeClass(new ByteArrayInputStream(classfileBuffer));
+                //CtClass ctClass = classPool.get("com.swust.Main");
 
                 //当当前类加载器class not found时，可以手动加载classPool.get("com.github.mrlawrenc.hot.classloader.boot.Boot").toClass();
 
@@ -78,16 +81,18 @@ class ClzInterceptor implements ClassFileTransformer {
                 newMethod.setName("main$proxy");
 
 
-
-                StringBuffer body = new StringBuffer();
-                body.append("{\ncom.github.mrlawrenc.hot.classloader.boot.Boot.run(\"").append(path).append("\");\n}");
-                      /*  body.append("System.out.println(\"center code###############\");\n");
+              /*   StringBuffer body = new StringBuffer();
+                body.append("{\ncom.github.mrlawrenc.hot.classloader.boot.Boot.run(\"").append(path).append("\");\n");
+                       body.append("System.out.println(\"center code###############\");\n");
                         body.append("System.out.println(\"main stop.................\"); }");*/
+
+                String body="{com.github.mrlawrenc.hot.classloader.boot.Boot.run();}";
 
                 ctMethod.setBody(body.toString());
 
 
                 ctClass.addMethod(newMethod);
+                changeMain=true;
                 return ctClass.toBytecode();
             }
         } catch (Exception e) {

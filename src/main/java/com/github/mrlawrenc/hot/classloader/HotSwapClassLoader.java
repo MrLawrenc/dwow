@@ -98,7 +98,6 @@ public class HotSwapClassLoader extends ClassLoader {
             if (loadClzList.contains(name)) {
                 throw new ClassNotFoundException(String.format("current clz(%s) has been loaded", name));
             } else {
-                System.out.println("当前name:"+name+" loader:"+getSystemClassLoader());
                 //交由App加载
                 result = getSystemClassLoader().loadClass(name);
             }
