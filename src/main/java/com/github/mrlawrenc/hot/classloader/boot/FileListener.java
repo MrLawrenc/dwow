@@ -23,7 +23,7 @@ public class FileListener extends FileAlterationListenerAdaptor {
         try {
             System.out.println("file change : " + file.getAbsolutePath());
             HotSwapClassLoader loader = new HotSwapClassLoader(Boot.class.getResource("/").getPath());
-            Boot.start0(loader);
+            Boot.start0(loader, false, null);
         } catch (Exception exception) {
             exception.printStackTrace();
         }

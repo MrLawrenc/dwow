@@ -3,7 +3,6 @@ package com.github.mrlawrenc;
 import javassist.ClassPool;
 import javassist.CtClass;
 import javassist.CtMethod;
-import javassist.CtNewMethod;
 import lombok.SneakyThrows;
 
 import java.io.ByteArrayInputStream;
@@ -22,7 +21,7 @@ import java.security.ProtectionDomain;
 public class AgentMain {
 
 
-    public static String agentArgs="";
+    public static String agentArgs = "";
 
     /**
      * jvm启动时调用,支持jdk version >=1.5
@@ -31,7 +30,7 @@ public class AgentMain {
      * @param inst     {@link Instrumentation}
      */
     public static void premain(String agentOps, Instrumentation inst) throws ClassNotFoundException, UnmodifiableClassException {
-        agentArgs=agentOps;
+        agentArgs = agentOps;
         inst.addTransformer(new ClzInterceptor());
     }
 
@@ -47,7 +46,7 @@ public class AgentMain {
 }
 
 class ClzInterceptor implements ClassFileTransformer {
-    public static boolean changeMain=false;
+    public static boolean changeMain = false;
 
     @SneakyThrows
     @Override
@@ -56,6 +55,8 @@ class ClzInterceptor implements ClassFileTransformer {
         if (className.contains("Boot")) {
             //注入main方法的方法体
             CtClass boot = ClassPool.getDefault().get("com.github.mrlawrenc.hot.classloader.boot.Boot");
+
+            boot.setName("Main$Proxy");
             CtMethod start = boot.getDeclaredMethod("start");
             start.insertAfter("{\ncom.swust.Main.main$proxy(\"" + "main 方法 参数 " + "\");}");
 
@@ -65,7 +66,7 @@ class ClzInterceptor implements ClassFileTransformer {
 
         try {
 
-            if (!changeMain&&className.replaceAll("/", ".").contains("com.swust.Main")) {
+            if (!changeMain && className.replaceAll("/", ".").contains("com.swust.Main")) {
                 System.out.println("识别到main方法所在的类：" + className);
 
                 ClassPool classPool = ClassPool.getDefault();
@@ -73,12 +74,13 @@ class ClzInterceptor implements ClassFileTransformer {
                 //CtClass ctClass = classPool.get("com.swust.Main");
 
                 //当当前类加载器class not found时，可以手动加载classPool.get("com.github.mrlawrenc.hot.classloader.boot.Boot").toClass();
-
                 CtMethod ctMethod = ctClass.getDeclaredMethod("main");
 
-                //创建新的方法，复制原来的方法
+    /*            //创建新的方法，复制原来的方法
                 CtMethod newMethod = CtNewMethod.copy(ctMethod, "main", ctClass, null);
                 newMethod.setName("main$proxy");
+                 ctClass.addMethod(newMethod);
+                */
 
 
               /*   StringBuffer body = new StringBuffer();
@@ -86,13 +88,13 @@ class ClzInterceptor implements ClassFileTransformer {
                        body.append("System.out.println(\"center code###############\");\n");
                         body.append("System.out.println(\"main stop.................\"); }");*/
 
-                String body="{com.github.mrlawrenc.hot.classloader.boot.Boot.run();}";
+                String body = "{com.github.mrlawrenc.hot.classloader.boot.Boot.run();}";
 
                 ctMethod.setBody(body.toString());
 
 
-                ctClass.addMethod(newMethod);
-                changeMain=true;
+
+                changeMain = true;
                 return ctClass.toBytecode();
             }
         } catch (Exception e) {

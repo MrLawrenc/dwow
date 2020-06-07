@@ -29,7 +29,8 @@ public class HotSwapClassLoader extends ClassLoader {
 
     private List<String> loadClzList = new ArrayList<>();
 
-    public HotSwapClassLoader(String classPath) {
+
+    public HotSwapClassLoader(String classPath, String... otherClz) {
         this.classPath = new File(classPath).getAbsolutePath();
         loadHotClass(new File(classPath));
     }
@@ -42,6 +43,11 @@ public class HotSwapClassLoader extends ClassLoader {
         byte[] bytes = new byte[(int) file.length()];
         inputStream.read(bytes);
         defineClass(fullName, bytes, 0, bytes.length);
+    }
+
+
+    public Class<?> defineClass0(String name, byte[] b, int off, int len) {
+        return defineClass(name, b, off, len);
     }
 
     private void loadHotClass(File file) {
@@ -82,9 +88,9 @@ public class HotSwapClassLoader extends ClassLoader {
                 } catch (Exception e) {
                     e.printStackTrace();
                 }
-            }else if(AgentConstant.JAR_END.equals(endName)){
+            } else if (AgentConstant.JAR_END.equals(endName)) {
                 //jar文件
-            }else {
+            } else {
                 LogUtil.debug("ignore file  : {}", fileName);
             }
         }
@@ -92,7 +98,7 @@ public class HotSwapClassLoader extends ClassLoader {
 
 
     @Override
-    protected Class<?> loadClass(String name, boolean resolve) throws ClassNotFoundException {
+    public Class<?> loadClass(String name, boolean resolve) throws ClassNotFoundException {
         Class<?> result = findLoadedClass(name);
         if (result == null) {
             if (loadClzList.contains(name)) {
