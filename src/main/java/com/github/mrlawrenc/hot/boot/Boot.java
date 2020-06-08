@@ -1,4 +1,4 @@
-package com.github.mrlawrenc.hot.classloader.boot;
+package com.github.mrlawrenc.hot.boot;
 
 
 import com.github.mrlawrenc.AgentMain;
@@ -31,27 +31,14 @@ public class Boot {
                 " |_||_|   \\___/   _\\__|   |___/   \\_/\\_/ \\__,_|   |_|__   \\___|   _|_|_  \\__,_|   /__/_   /__/_   |____|  \\___/  \\__,_|  \\__,_|   \\___|   _|_|_   TS__[O]  _|_|_   _|_|_   \\___/   /_\\_\\   _|__/  \n" +
                 "_|\"\"\"\"\"|_|\"\"\"\"\"|_|\"\"\"\"\"|_|\"\"\"\"\"|_|\"\"\"\"\"|_|\"\"\"\"\"|_|\"\"\"\"\"|_|\"\"\"\"\"|_|\"\"\"\"\"|_|\"\"\"\"\"|_|\"\"\"\"\"|_|\"\"\"\"\"|_|\"\"\"\"\"|_|\"\"\"\"\"|_|\"\"\"\"\"|_|\"\"\"\"\"|_|\"\"\"\"\"|_|\"\"\"\"\"| {======|_| \"\"\" |_|\"\"\"\"\"|_|\"\"\"\"\"|_|\"\"\"\"\"|_| \"\"\"\"| \n" +
                 "\"`-0-0-'\"`-0-0-'\"`-0-0-'\"`-0-0-'\"`-0-0-'\"`-0-0-'\"`-0-0-'\"`-0-0-'\"`-0-0-'\"`-0-0-'\"`-0-0-'\"`-0-0-'\"`-0-0-'\"`-0-0-'\"`-0-0-'\"`-0-0-'\"`-0-0-'\"`-0-0-'./o--000'\"`-0-0-'\"`-0-0-'\"`-0-0-'\"`-0-0-'\"`-0-0-' \n");
+        System.out.println("###############################Hot boot init###############################");
+
         System.out.println("current thread loader:" + Thread.currentThread().getContextClassLoader());
         System.out.println("current obj loader:" + this.getClass().getClassLoader());
 
 
-        try {
-            ClassPool pool = ClassPool.getDefault();
-            CtClass main = pool.get("com.swust.Main");
-            //如果CtClass通过writeFile(),toClass(),toBytecode()转换了类文件，javassist冻结了CtClass对象。以后是不允许修改这个 CtClass对象
-            //cc.writeFile();//冻结
-            //cc.defrost();//解冻
-            //cc.setSuperclass(...);   // OK since the class is not frozen.可以重新操作CtClass，因为被解冻了
-            main.defrost();
-            main.setName("Hello");
-            main.writeFile("D:\\B");
 
-            //System.out.println("newMain:"+newMain+"  loader:"+newMain.getClassLoader());
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-
-        //调用main方法
+        //调用main副本方法
         HotSwapClassLoader hotSwapClassLoader = (HotSwapClassLoader) this.getClass().getClassLoader();
         File proxyFile = new File("D:\\B\\Hello.class");
         try (FileInputStream inputStream = new FileInputStream(proxyFile)) {
@@ -59,7 +46,7 @@ public class Boot {
             inputStream.read(bytes);
             Class<?> proxyMain = hotSwapClassLoader.defineClass0("Hello", bytes, 0, bytes.length);
             System.out.println("load copy main,will invoke main");
-            proxyMain.getMethod("main", String[].class).invoke(null, new Object[]{new String[]{"aa"}});
+            proxyMain.getMethod("main$proxy", String[].class).invoke(null, new Object[]{new String[]{"aa"}});
 
         } catch (Exception e) {
             e.printStackTrace();
@@ -81,10 +68,10 @@ public class Boot {
         List<String> aList = bean.getInputArguments();
         //当前代理jar包所在位置
         String keyword = "java-agent-dwow";
-        for (int i = 0; i < aList.size(); i++) {
-            if (aList.get(i).contains(keyword)) {
+        for (String s : aList) {
+            if (s.contains(keyword)) {
                 //从当前jar包加载Boot
-                String filePath = aList.get(i).split("=")[0].split("javaagent:")[1];
+                String filePath = s.split("=")[0].split("javaagent:")[1];
                 System.out.println("current agent path : " + filePath);
 
                 File file = new File(filePath);
@@ -99,14 +86,34 @@ public class Boot {
                         Class<?> boot = loader.defineClass0(Boot.class.getName(), bytes, 0, bytes.length);
                         System.out.println("load proxy boot:" + boot);
 
-                        //热加载
                         Object bootObj = boot.getConstructor().newInstance();
-                        boot.getMethod("start").invoke(bootObj);
+
+                        //先开启监听，之后再调用start方法，否则很容易阻塞
                         Thread.currentThread().setContextClassLoader(loader);
                         if (first) {
                             System.out.println("first invoke ,will init file listener");
                             boot.getMethod("startListenFile", String.class).invoke(bootObj, path);
+
+                            //保存main副本
+                            try {
+                                ClassPool pool = ClassPool.getDefault();
+                                CtClass main = pool.get("com.swust.Main");
+                                //如果CtClass通过writeFile(),toClass(),toBytecode()转换了类文件，javassist冻结了CtClass对象。以后是不允许修改这个 CtClass对象
+                                //cc.writeFile();//冻结
+                                //cc.defrost();//解冻
+                                //cc.setSuperclass(...);   // OK since the class is not frozen.可以重新操作CtClass，因为被解冻了
+                                main.defrost();
+                                main.setName("Hello");
+                                main.writeFile("D:\\B");
+
+                                //System.out.println("newMain:"+newMain+"  loader:"+newMain.getClassLoader());
+                            } catch (Exception e) {
+                                e.printStackTrace();
+                            }
                         }
+
+                        //热加载
+                        boot.getMethod("start").invoke(bootObj);
                     }
                 }
 
@@ -125,11 +132,11 @@ public class Boot {
         String path = AgentMain.agentArgs;
         System.out.println("run ..... " + path);
         HotSwapClassLoader hotSwapClassLoader = new HotSwapClassLoader(path);
-
+        //startListenFile(path);
         start0(hotSwapClassLoader, true, path);
     }
 
-    public void startListenFile(String path) throws Exception {
+    public static void startListenFile(String path) throws Exception {
         System.out.println("listening : " + path);
         FileAlterationObserver observer = new FileAlterationObserver(path);
 

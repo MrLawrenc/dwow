@@ -1,4 +1,4 @@
-package com.github.mrlawrenc.hot.classloader.boot;
+package com.github.mrlawrenc.hot.boot;
 
 
 import com.github.mrlawrenc.hot.classloader.HotSwapClassLoader;
