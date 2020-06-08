@@ -1,7 +1,7 @@
 package com.github.mrlawrenc.hot.boot;
 
 
-import com.github.mrlawrenc.hot.classloader.HotSwapClassLoader;
+import com.github.mrlawrenc.hot.classloader.ContextClassLoader;
 import org.apache.commons.io.monitor.FileAlterationListenerAdaptor;
 
 import java.io.File;
@@ -16,14 +16,20 @@ import java.io.File;
  * @see java.nio.file.WatchService
  */
 public class FileListener extends FileAlterationListenerAdaptor {
+    private ContextClassLoader loader;
 
+    public FileListener(ContextClassLoader loader) {
+        this.loader = loader;
+    }
 
     @Override
     public void onFileChange(File file) {
         try {
             System.out.println("file change : " + file.getAbsolutePath());
-            HotSwapClassLoader loader = new HotSwapClassLoader(Boot.class.getResource("/").getPath());
-            Boot.start0(loader, false, null);
+
+
+            loader.getBoot().reloadClz(loader,file);
+
         } catch (Exception exception) {
             exception.printStackTrace();
         }

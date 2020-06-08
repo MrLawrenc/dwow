@@ -17,7 +17,7 @@ import java.util.regex.Matcher;
  * 专门加载jar文件的calssloader
  */
 @Slf4j
-public class HotSwapJarClassLoader extends HotSwapClassLoader {
+public class HotSwapJarClassLoader extends ClassLoader {
 
     public static final String SEPARATOR = Matcher.quoteReplacement(File.separator);
 
@@ -25,12 +25,10 @@ public class HotSwapJarClassLoader extends HotSwapClassLoader {
 
     private List<String> loadClzList = new ArrayList<>();
 
-    public HotSwapJarClassLoader(String classPath, String... otherClz) {
-        super(classPath, otherClz);
+    public HotSwapJarClassLoader() {
     }
 
     public HotSwapJarClassLoader(String classPath, String fullName) throws Exception {
-        super(classPath, fullName);
     }
 
 

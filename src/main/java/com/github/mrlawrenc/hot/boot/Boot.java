@@ -2,28 +2,28 @@ package com.github.mrlawrenc.hot.boot;
 
 
 import com.github.mrlawrenc.AgentMain;
+import com.github.mrlawrenc.hot.classloader.ContextClassLoader;
 import com.github.mrlawrenc.hot.classloader.HotSwapClassLoader;
 import javassist.*;
-import org.apache.commons.io.monitor.FileAlterationMonitor;
-import org.apache.commons.io.monitor.FileAlterationObserver;
+import lombok.extern.slf4j.Slf4j;
 
 import java.io.File;
 import java.io.FileInputStream;
-import java.lang.management.ManagementFactory;
-import java.lang.management.RuntimeMXBean;
 import java.lang.reflect.Method;
-import java.util.Iterator;
-import java.util.List;
-import java.util.jar.JarEntry;
-import java.util.jar.JarFile;
 
 /**
  * @author : MrLawrenc
  * date  2020/6/7 11:34
  */
+@Slf4j
 public class Boot {
 
-    public void start() {
+    private Object mainObj;
+
+    /**
+     * 应用正式启动
+     */
+    private void start0() {
         System.out.println("###############################Hot boot init###############################");
         System.out.println("  _  _             _       ___                     _ __    ___      _                              _                         _                               ___                            _  _  \n" +
                 " | || |    ___    | |_    / __|  __ __ __ __ _    | '_ \\  / __|    | |    __ _     ___     ___    | |      ___    __ _    __| |    ___      _ _     o O O   | _ \\    _ _    ___    __ __   | || | \n" +
@@ -35,7 +35,6 @@ public class Boot {
 
         System.out.println("current thread loader:" + Thread.currentThread().getContextClassLoader());
         System.out.println("current obj loader:" + this.getClass().getClassLoader());
-
 
 
         //调用main副本方法
@@ -57,69 +56,46 @@ public class Boot {
     }
 
     /**
-     * @param loader 类加载器
-     * @param first  是否是第一次初始化
-     * @param path   监听字节码的class path
+     * @param loader    类加载器
+     * @param startBoot 是否需要启动应用
      * @throws Exception 代理失败
      */
-    public static void start0(HotSwapClassLoader loader, boolean first, String path) throws Exception {
+    public static void start(ContextClassLoader loader, boolean startBoot) throws Exception {
+        if (startBoot) {
+            //启动应用
+            Method start = loader.getBoot().getClass().getDeclaredMethod("start0");
+            start.setAccessible(true);
+            start.invoke(loader.getBoot());
+        } else {
 
-        RuntimeMXBean bean = ManagementFactory.getRuntimeMXBean();
-        List<String> aList = bean.getInputArguments();
-        //当前代理jar包所在位置
-        String keyword = "java-agent-dwow";
-        for (String s : aList) {
-            if (s.contains(keyword)) {
-                //从当前jar包加载Boot
-                String filePath = s.split("=")[0].split("javaagent:")[1];
-                System.out.println("current agent path : " + filePath);
+        }
+    }
 
-                File file = new File(filePath);
-                JarFile jarFile = new JarFile(file);
-                Iterator<JarEntry> jarEntryIterator = jarFile.entries().asIterator();
-                while (jarEntryIterator.hasNext()) {
-                    JarEntry jarEntry = jarEntryIterator.next();
-                    if (jarEntry.getRealName().replaceAll("/", ".").contains(Boot.class.getName())) {
-                        System.out.println("find boot:" + jarEntry);
+    /**
+     * 重新装载class
+     *
+     * @param loader     装载该变化的class文件所需要的加载器
+     * @param changeFile 变化的文件，为class或者jar
+     */
+    public void reloadClz(ContextClassLoader loader, File changeFile) {
+        loader.getMonitor().lock();
+        try {
+            if (changeFile.getName().endsWith(ContextClassLoader.CLASS_FLAG)) {
 
-                        byte[] bytes = jarFile.getInputStream(jarEntry).readAllBytes();
-                        Class<?> boot = loader.defineClass0(Boot.class.getName(), bytes, 0, bytes.length);
-                        System.out.println("load proxy boot:" + boot);
-
-                        Object bootObj = boot.getConstructor().newInstance();
-
-                        //先开启监听，之后再调用start方法，否则很容易阻塞
-                        Thread.currentThread().setContextClassLoader(loader);
-                        if (first) {
-                            System.out.println("first invoke ,will init file listener");
-                            boot.getMethod("startListenFile", String.class).invoke(bootObj, path);
-
-                            //保存main副本
-                            try {
-                                ClassPool pool = ClassPool.getDefault();
-                                CtClass main = pool.get("com.swust.Main");
-                                //如果CtClass通过writeFile(),toClass(),toBytecode()转换了类文件，javassist冻结了CtClass对象。以后是不允许修改这个 CtClass对象
-                                //cc.writeFile();//冻结
-                                //cc.defrost();//解冻
-                                //cc.setSuperclass(...);   // OK since the class is not frozen.可以重新操作CtClass，因为被解冻了
-                                main.defrost();
-                                main.setName("Hello");
-                                main.writeFile("D:\\B");
-
-                                //System.out.println("newMain:"+newMain+"  loader:"+newMain.getClassLoader());
-                            } catch (Exception e) {
-                                e.printStackTrace();
-                            }
-                        }
-
-                        //热加载
-                        boot.getMethod("start").invoke(bootObj);
-                    }
+                try (FileInputStream inputStream = new FileInputStream(changeFile)) {
+                    byte[] bytes = inputStream.readAllBytes();
+                    loader.reloadClass(loader.filePath2ClzName(changeFile.getAbsolutePath()), bytes, 0, bytes.length, false);
+                } catch (Exception e) {
+                    log.error("reload class({}) fail ", changeFile.getAbsoluteFile());
                 }
+            } else if (changeFile.getName().endsWith(ContextClassLoader.JAR_FLAG)) {
+
+            } else {
 
             }
+        } finally {
+            loader.getMonitor().unlock();
         }
-
 
     }
 
@@ -129,24 +105,33 @@ public class Boot {
      * @throws Exception 代理异常
      */
     public static void run() throws Exception {
-        String path = AgentMain.agentArgs;
-        System.out.println("run ..... " + path);
-        HotSwapClassLoader hotSwapClassLoader = new HotSwapClassLoader(path);
-        //startListenFile(path);
-        start0(hotSwapClassLoader, true, path);
+        System.out.println("run ..... " + AgentMain.agentArgs);
+
+        ContextClassLoader contextClassLoader = new ContextClassLoader(AgentMain.agentArgs);
+        contextClassLoader.initHotClass();
+
+        Thread.currentThread().setContextClassLoader(contextClassLoader);
+
+        try {
+            //保存源main方法所在的类的副本
+            ClassPool pool = ClassPool.getDefault();
+            CtClass main = pool.get("com.swust.Main");
+            //如果CtClass通过writeFile(),toClass(),toBytecode()转换了类文件，javassist冻结了CtClass对象。以后是不允许修改这个 CtClass对象
+            //cc.writeFile();//冻结
+            //cc.defrost();//解冻
+            //cc.setSuperclass(...);   // OK since the class is not frozen.可以重新操作CtClass，因为被解冻了
+            main.defrost();
+            main.setName("Hello");
+            main.writeFile("D:\\B");
+
+            //System.out.println("newMain:"+newMain+"  loader:"+newMain.getClassLoader());
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
+        start(contextClassLoader, true);
     }
 
-    public static void startListenFile(String path) throws Exception {
-        System.out.println("listening : " + path);
-        FileAlterationObserver observer = new FileAlterationObserver(path);
-
-        observer.addListener(new FileListener());
-
-        //5s
-        FileAlterationMonitor monitor = new FileAlterationMonitor(5000, observer);
-
-        monitor.start();
-    }
 
     /**
      * 创建一个Person 对象

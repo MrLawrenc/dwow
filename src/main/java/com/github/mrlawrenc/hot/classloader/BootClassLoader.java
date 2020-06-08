@@ -12,4 +12,7 @@ public interface BootClassLoader {
      * 文件分隔符
      */
     String SEPARATOR = Matcher.quoteReplacement(File.separator);
+
+     String CLASS_FLAG = "class";
+    String JAR_FLAG = "class";
 }
