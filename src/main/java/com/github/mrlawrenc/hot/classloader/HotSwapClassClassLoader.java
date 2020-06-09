@@ -64,8 +64,8 @@ public class HotSwapClassClassLoader extends ClassLoader {
 
 
     public Class<?> defineClass0(String name, byte[] b, int off, int len) throws ClassNotFoundException {
-        monitor.lock();
         Class<?> defineClass;
+        monitor.lock();
         try {
             defineClass = defineClass(name, b, off, len);
             byteMap.put(name, b);

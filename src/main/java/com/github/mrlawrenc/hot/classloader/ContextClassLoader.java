@@ -4,6 +4,8 @@ import com.github.mrlawrenc.hot.boot.Boot;
 import com.github.mrlawrenc.hot.boot.FileListener;
 import javassist.ClassPool;
 import javassist.CtClass;
+import javassist.CtMethod;
+import javassist.CtNewMethod;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.io.FileUtils;
@@ -111,7 +113,7 @@ public class ContextClassLoader extends ClassLoader implements BootClassLoader {
         loadJarFiLe(jarFileList);
 
         //destroy monitor.stop();monitor.getObservers().iterator().next().destroy();
-        loadFileListenerRun(this, 2000L);
+        loadFileListenerRun(this, 1000L);
     }
 
     /**
@@ -192,7 +194,7 @@ public class ContextClassLoader extends ClassLoader implements BootClassLoader {
     public Class<?> loadClass(String name, boolean resolve) throws ClassNotFoundException {
         monitor.lock();
         try {
-            System.out.println("context load "+name);
+            System.out.println("context load " + name);
             //判断当前类是否已经被加载,若以加载，从后开始查找
             if (classClassLoaderLoadClzNames.contains(name)) {
                 return classClassLoader.loadClass(name, resolve);
@@ -223,13 +225,13 @@ public class ContextClassLoader extends ClassLoader implements BootClassLoader {
                 //todo
             } else {
                 HotSwapClassClassLoader old = this.classClassLoader;
-                System.out.println(" old class:"+old.loadClass(name).hashCode());
+                System.out.println(" old class:" + old.loadClass(name).hashCode());
                 HotSwapClassClassLoader newLoader = new HotSwapClassClassLoader();
                 old.changeClassLoader(newLoader);
 
                 this.classClassLoader = newLoader;
                 Class<?> defineClass0 = newLoader.defineClass0(name, b, off, len);
-                System.out.println("new class:"+defineClass0.hashCode());
+                System.out.println("new class:" + defineClass0.hashCode());
             }
 
         } catch (ClassNotFoundException e) {
@@ -280,17 +282,37 @@ public class ContextClassLoader extends ClassLoader implements BootClassLoader {
      */
     public String filePath2ClzName(String filePath) {
         String str = filePath.replace(classPath, "").replaceAll(SEPARATOR, ".");
-        return str.replace(".class", "").substring(1);
+        return str.substring(1, str.length() - 6);
     }
 
-    public static void main(String[] args) {
-        String replace = "E:\\openSource\\dwow\\target\\classes\\com\\github\\mrlawrenc\\AgentMain.class"
-                .replace("E:\\openSource\\dwow\\target\\classes", "");
-        System.out.println(replace);
-        String s = replace.replaceAll(SEPARATOR, ".");
-        System.out.println(s);
+    public static void main(String[] args) throws Exception{
 
-        System.out.println(s.replace(".class", "").substring(1));
+        ClassPool classPool = ClassPool.getDefault();
+        CtClass boot = classPool.get("com.github.mrlawrenc.hot.boot.Boot");
+
+        CtMethod tt = boot.getDeclaredMethod("tt");
+        CtMethod proxyMethod = CtNewMethod.copy(tt, tt.getName() + "$agent", boot, null);
+        boot.addMethod(proxyMethod);
+
+        String body = "{\n"
+                + "long start = System.nanoTime();"
+                + " Object result=null;\n"
+                + " try {\n"
+                + " result=($w)" + tt.getName() + "$agent($$);\n"
+                + "}catch(Throwable t){\n"
+                + " throw t;\n"
+                + "}finally{\n"
+                + "long end = System.nanoTime();"
+                + "System.out.println(end-start);" +
+                "}\n"
+                + "return ($r)result;\n"
+                + "}";
+
+        System.out.println(body);
+        proxyMethod.setBody(body);
+
+        Class<?> toClass = boot.toClass();
+        toClass.getDeclaredMethod("tt").invoke(toClass.getConstructor());
     }
 
     /**

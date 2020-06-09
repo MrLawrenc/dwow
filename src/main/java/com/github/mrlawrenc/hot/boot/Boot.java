@@ -84,7 +84,7 @@ public class Boot {
                     byte[] bytes = inputStream.readAllBytes();
                     loader.reloadClass(loader.filePath2ClzName(changeFile.getAbsolutePath()), bytes, 0, bytes.length, false);
                 } catch (Exception e) {
-                    log.error("reload class("+ changeFile.getAbsoluteFile()+") fail ",e);
+                    log.error("reload class(" + changeFile.getAbsoluteFile() + ") fail ", e);
                 }
             } else if (changeFile.getName().endsWith(ContextClassLoader.JAR_FLAG)) {
 
@@ -97,6 +97,8 @@ public class Boot {
 
     }
 
+    public static Thread currentMainThread;
+
     /**
      * 热部署代理入口
      *
@@ -105,6 +107,7 @@ public class Boot {
     public static void run() throws Exception {
         System.out.println("run ..... " + AgentMain.agentArgs);
 
+        currentMainThread = Thread.currentThread();
         ContextClassLoader contextClassLoader = new ContextClassLoader(AgentMain.agentArgs);
         contextClassLoader.initHotClass();
 
@@ -202,5 +205,10 @@ public class Boot {
 
     public static void test(String[] args) {
         System.out.println("测试的静态方法");
+    }
+
+    public  void tt() throws InterruptedException {
+        System.out.println("tt");
+        Thread.sleep(5);
     }
 }
