@@ -1,5 +1,6 @@
 package com.github.mrlawrenc;
 
+import com.github.mrlawrenc.hot.boot.Boot;
 import javassist.*;
 import lombok.SneakyThrows;
 
@@ -87,9 +88,9 @@ class ClzInterceptor implements ClassFileTransformer {
                        body.append("System.out.println(\"center code###############\");\n");
                         body.append("System.out.println(\"main stop.................\"); }");*/
 
-                String body = "{com.github.mrlawrenc.hot.classloader.boot.Boot.run();}";
+                //String body = "{com.github.mrlawrenc.hot.boot.Boot.run();}";
 
-                ctMethod.setBody(body.toString());
+                ctMethod.setBody("{" + Boot.class.getName() + ".run();}");
 
 
                 changeMain = true;

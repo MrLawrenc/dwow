@@ -18,7 +18,11 @@ import java.lang.reflect.Method;
 @Slf4j
 public class Boot {
 
-    private Object mainObj;
+    /**
+     * 复制的main方法所对应的对象
+     */
+    private Object copyMainObj;
+
 
     /**
      * 应用正式启动
@@ -35,25 +39,19 @@ public class Boot {
 
         System.out.println("current thread loader:" + Thread.currentThread().getContextClassLoader());
         System.out.println("current obj loader:" + this.getClass().getClassLoader());
+        System.out.println("current class loader:" + Boot.class.getClassLoader());
 
 
-        //调用main副本方法
-        HotSwapClassLoader hotSwapClassLoader = (HotSwapClassLoader) this.getClass().getClassLoader();
-        File proxyFile = new File("D:\\B\\Hello.class");
-        try (FileInputStream inputStream = new FileInputStream(proxyFile)) {
-            byte[] bytes = new byte[(int) proxyFile.length()];
-            inputStream.read(bytes);
-            Class<?> proxyMain = hotSwapClassLoader.defineClass0("Hello", bytes, 0, bytes.length);
-            System.out.println("load copy main,will invoke main");
-            proxyMain.getMethod("main$proxy", String[].class).invoke(null, new Object[]{new String[]{"aa"}});
-
+        try {
+            //调用main副本方法
+            copyMainObj.getClass().getMethod("main$proxy", String[].class).invoke(null, new Object[]{new String[]{"aa"}});
         } catch (Exception e) {
             e.printStackTrace();
         }
 
-
         System.out.println("###############################Hot boot  end###############################");
     }
+
 
     /**
      * @param loader    类加载器
@@ -86,7 +84,7 @@ public class Boot {
                     byte[] bytes = inputStream.readAllBytes();
                     loader.reloadClass(loader.filePath2ClzName(changeFile.getAbsolutePath()), bytes, 0, bytes.length, false);
                 } catch (Exception e) {
-                    log.error("reload class({}) fail ", changeFile.getAbsoluteFile());
+                    log.error("reload class("+ changeFile.getAbsoluteFile()+") fail ",e);
                 }
             } else if (changeFile.getName().endsWith(ContextClassLoader.JAR_FLAG)) {
 
@@ -110,25 +108,9 @@ public class Boot {
         ContextClassLoader contextClassLoader = new ContextClassLoader(AgentMain.agentArgs);
         contextClassLoader.initHotClass();
 
+        contextClassLoader.saveCopyMain();
+
         Thread.currentThread().setContextClassLoader(contextClassLoader);
-
-        try {
-            //保存源main方法所在的类的副本
-            ClassPool pool = ClassPool.getDefault();
-            CtClass main = pool.get("com.swust.Main");
-            //如果CtClass通过writeFile(),toClass(),toBytecode()转换了类文件，javassist冻结了CtClass对象。以后是不允许修改这个 CtClass对象
-            //cc.writeFile();//冻结
-            //cc.defrost();//解冻
-            //cc.setSuperclass(...);   // OK since the class is not frozen.可以重新操作CtClass，因为被解冻了
-            main.defrost();
-            main.setName("Hello");
-            main.writeFile("D:\\B");
-
-            //System.out.println("newMain:"+newMain+"  loader:"+newMain.getClassLoader());
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-
         start(contextClassLoader, true);
     }
 
@@ -184,6 +166,18 @@ public class Boot {
     public static boolean second = false;
 
     public static void main(String[] args) throws Exception {
+
+/*
+        ContextClassLoader contextClassLoader = new ContextClassLoader("E:\\openSource\\dwow\\target\\classes\\");
+        File file = new File("E:\\openSource\\dwow\\target\\classes\\com\\github\\mrlawrenc\\hot\\boot\\FileListener.class");
+        byte[] bytes1 = new FileInputStream(file).readAllBytes();
+
+        Class<?> loadClass = contextClassLoader.defineClass0(FileListener.class.getName(),bytes1,0,bytes1.length);
+        System.out.println("loader "+loadClass.getClassLoader());
+
+        loadClass.getDeclaredMethod("test").invoke(null);*/
+
+
         if (second) {
             System.out.println("第二次调用main。。。。。。");
             return;

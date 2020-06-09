@@ -2,6 +2,8 @@ package com.github.mrlawrenc.hot.classloader;
 
 import com.github.mrlawrenc.hot.boot.Boot;
 import com.github.mrlawrenc.hot.boot.FileListener;
+import javassist.ClassPool;
+import javassist.CtClass;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.io.FileUtils;
@@ -14,6 +16,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.lang.management.ManagementFactory;
 import java.lang.management.RuntimeMXBean;
+import java.lang.reflect.Field;
 import java.util.*;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
@@ -43,7 +46,7 @@ public class ContextClassLoader extends ClassLoader implements BootClassLoader {
     @Getter
     private Lock monitor = new ReentrantLock();
     @Getter
-    private Boot boot;
+    private Object boot;
 
     /**
      * 应用的class path路径
@@ -53,6 +56,7 @@ public class ContextClassLoader extends ClassLoader implements BootClassLoader {
     /**
      * 热加载的类加载器分为两类，一类为加载.class文件的，一类是加载jar文件的
      */
+    @Getter
     private HotSwapClassClassLoader classClassLoader;
     // private LinkedList<HotSwapClassClassLoader> classClassLoaderQueue;
     /**
@@ -70,6 +74,7 @@ public class ContextClassLoader extends ClassLoader implements BootClassLoader {
     public ContextClassLoader(String classPath) {
         this.classPath = new File(classPath).getAbsolutePath();
         this.classClassLoaderLoadClzNames = new ArrayList<>();
+        this.jarClassLoadersMap = new HashMap<>();
         //  this.classClassLoaderQueue = new ArrayDeque<>();
 
         Class<?> bootClz = loadBoot();
@@ -78,7 +83,9 @@ public class ContextClassLoader extends ClassLoader implements BootClassLoader {
             throw new NullPointerException("boot is null");
         }
         try {
-            boot = (Boot) bootClz.getConstructor().newInstance();
+            //不能强转，且boot不应该定义为Boot类型，应为Object，当前boot是由ContextClassLoader加载的
+            //boot = (Boot) bootClz.getConstructor().newInstance();
+            boot = bootClz.getConstructor().newInstance();
         } catch (Exception e) {
             log.error("boot instance fail", e);
         }
@@ -103,6 +110,7 @@ public class ContextClassLoader extends ClassLoader implements BootClassLoader {
         loadClassFiLe(classFileList);
         loadJarFiLe(jarFileList);
 
+        //destroy monitor.stop();monitor.getObservers().iterator().next().destroy();
         loadFileListenerRun(this, 2000L);
     }
 
@@ -133,7 +141,7 @@ public class ContextClassLoader extends ClassLoader implements BootClassLoader {
             HotSwapJarClassLoader jarClassLoader = new HotSwapJarClassLoader();
 
             File path = file.getAbsoluteFile();
-            JarFile jarFile ;
+            JarFile jarFile;
             try {
                 jarFile = new JarFile(file);
             } catch (IOException e) {
@@ -165,9 +173,9 @@ public class ContextClassLoader extends ClassLoader implements BootClassLoader {
         classFileList.forEach(file -> {
             try (FileInputStream inputStream = new FileInputStream(file)) {
                 byte[] bytes = inputStream.readAllBytes();
-                classClassLoader.defineClass0(filePath2ClzName(file.getAbsolutePath()), bytes, 0, bytes.length);
+                Class<?> loadedClz = classClassLoader.defineClass0(filePath2ClzName(file.getAbsolutePath()), bytes, 0, bytes.length);
 
-                classClassLoaderLoadClzNames.add(file.getName());
+                classClassLoaderLoadClzNames.add(loadedClz.getName());
             } catch (Exception e) {
                 log.error("load class({}) fail", file.getAbsoluteFile());
             }
@@ -176,24 +184,28 @@ public class ContextClassLoader extends ClassLoader implements BootClassLoader {
     }
 
 
+    public Class<?> defineClass0(String name, byte[] b, int off, int len) {
+        return this.defineClass(name, b, off, len);
+    }
+
     @Override
     public Class<?> loadClass(String name, boolean resolve) throws ClassNotFoundException {
         monitor.lock();
         try {
+            System.out.println("context load "+name);
             //判断当前类是否已经被加载,若以加载，从后开始查找
             if (classClassLoaderLoadClzNames.contains(name)) {
-                Class<?> loadClass = classClassLoader.loadClass(name, resolve);
-                if (loadClass == null) {
-                    //说明已经热更新过,重新加载
-
-                    this.classClassLoader.updateClass(name);
-
-                }
-
+                return classClassLoader.loadClass(name, resolve);
             }
+
             HotSwapJarClassLoader jarClassLoader = jarClassLoadersMap.get(name);
             if (jarClassLoader != null) {
                 return jarClassLoader.loadClass(name, resolve);
+            }
+
+            Class<?> loadedClass = findLoadedClass(name);
+            if (loadedClass != null) {
+                return loadedClass;
             }
 
             //当前类交由AppClassLoader
@@ -210,14 +222,18 @@ public class ContextClassLoader extends ClassLoader implements BootClassLoader {
             if (jarType) {
                 //todo
             } else {
+                HotSwapClassClassLoader old = this.classClassLoader;
+                System.out.println(" old class:"+old.loadClass(name).hashCode());
                 HotSwapClassClassLoader newLoader = new HotSwapClassClassLoader();
-                newLoader.setByteMap(this.classClassLoader.getByteMap());
+                old.changeClassLoader(newLoader);
 
                 this.classClassLoader = newLoader;
-
-                classClassLoader.defineClass0(name, b, off, len);
+                Class<?> defineClass0 = newLoader.defineClass0(name, b, off, len);
+                System.out.println("new class:"+defineClass0.hashCode());
             }
 
+        } catch (ClassNotFoundException e) {
+            e.printStackTrace();
         } finally {
             monitor.unlock();
         }
@@ -247,11 +263,8 @@ public class ContextClassLoader extends ClassLoader implements BootClassLoader {
                 while (jarEntryIterator.hasNext()) {
                     JarEntry jarEntry = jarEntryIterator.next();
                     if (jarEntry.getRealName().replaceAll("/", ".").contains(Boot.class.getName())) {
-                        System.out.println("find boot:" + jarEntry);
-
                         byte[] bytes = jarFile.getInputStream(jarEntry).readAllBytes();
                         Class<?> boot = defineClass(Boot.class.getName(), bytes, 0, bytes.length);
-                        System.out.println("load proxy boot:" + boot);
                         return boot;
                     }
                 }
@@ -267,6 +280,52 @@ public class ContextClassLoader extends ClassLoader implements BootClassLoader {
      */
     public String filePath2ClzName(String filePath) {
         String str = filePath.replace(classPath, "").replaceAll(SEPARATOR, ".");
-        return str.replace(".class", "");
+        return str.replace(".class", "").substring(1);
+    }
+
+    public static void main(String[] args) {
+        String replace = "E:\\openSource\\dwow\\target\\classes\\com\\github\\mrlawrenc\\AgentMain.class"
+                .replace("E:\\openSource\\dwow\\target\\classes", "");
+        System.out.println(replace);
+        String s = replace.replaceAll(SEPARATOR, ".");
+        System.out.println(s);
+
+        System.out.println(s.replace(".class", "").substring(1));
+    }
+
+    /**
+     * 拷贝main方法所在的类，并保存
+     */
+    public void saveCopyMain() {
+        try {
+            //保存源main方法所在的类的副本
+            ClassPool pool = ClassPool.getDefault();
+            CtClass main = pool.get("com.swust.Main");
+            //如果CtClass通过writeFile(),toClass(),toBytecode()转换了类文件，javassist冻结了CtClass对象。以后是不允许修改这个 CtClass对象
+            //cc.writeFile();//冻结
+            //cc.defrost();//解冻
+            //cc.setSuperclass(...);   // OK since the class is not frozen.可以重新操作CtClass，因为被解冻了
+            main.defrost();
+            main.setName("Hello");
+
+            main.writeFile("D:\\B");
+
+            //System.out.println("newMain:"+newMain+"  loader:"+newMain.getClassLoader());
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
+        //调用main副本方法
+        File proxyFile = new File("D:\\B\\Hello.class");
+        try (FileInputStream inputStream = new FileInputStream(proxyFile)) {
+            byte[] bytes = inputStream.readAllBytes();
+            Class<?> proxyMain = this.defineClass("Hello", bytes, 0, bytes.length);
+
+            Field copyMainObj = boot.getClass().getDeclaredField("copyMainObj");
+            copyMainObj.setAccessible(true);
+            copyMainObj.set(boot, proxyMain.getConstructor().newInstance());
+        } catch (Exception e) {
+            log.error("save copy main({}) fail", proxyFile.getAbsolutePath());
+        }
     }
 }

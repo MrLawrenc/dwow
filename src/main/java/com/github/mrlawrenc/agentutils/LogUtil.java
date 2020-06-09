@@ -78,6 +78,16 @@ public final class LogUtil {
             logger.warn(str);
         }
     }
+
+    /**
+     * 正常调用是第四个栈是为当前调用类，而反射为第二个栈，如Hello被反射调用时的调用栈
+     * <p>
+     * 当前类是:java.lang.Thread
+     * 当前类是:Hello
+     * 当前类是:jdk.internal.reflect.NativeMethodAccessorImpl
+     *
+     * @return
+     */
     private static String getClzName() {
         StackTraceElement[] stackTrace = Thread.currentThread().getStackTrace();
         return stackTrace.length < 3 ? "  非本地类   " : stackTrace[3].getClassName();

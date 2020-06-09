@@ -5,6 +5,7 @@ import com.github.mrlawrenc.hot.classloader.ContextClassLoader;
 import org.apache.commons.io.monitor.FileAlterationListenerAdaptor;
 
 import java.io.File;
+import java.lang.reflect.Method;
 
 /**
  * @author : MrLawrenc
@@ -27,12 +28,18 @@ public class FileListener extends FileAlterationListenerAdaptor {
         try {
             System.out.println("file change : " + file.getAbsolutePath());
 
+            Object boot = loader.getBoot();
 
-            loader.getBoot().reloadClz(loader,file);
-
+            Method reloadClz = boot.getClass().getMethod("reloadClz", ContextClassLoader.class, File.class);
+            reloadClz.invoke(boot,loader,file);
         } catch (Exception exception) {
             exception.printStackTrace();
         }
         // super.onFileChange(file);
+    }
+
+    public static void test(){
+        System.out.println("测试方法的loader "+FileListener.class.getClassLoader());
+
     }
 }
