@@ -80,6 +80,8 @@ class ClzInterceptor implements ClassFileTransformer {
                 //创建新的方法，复制原来的方法
                 CtMethod newMethod = CtNewMethod.copy(ctMethod, "main", ctClass, null);
                 newMethod.setName("main$proxy");
+
+                newMethod.addCatch("{\nSystem.out.println(\"结束:\"+System.nanoTime());\nthrow $e;}",classPool.get(Throwable.class.getName()));
                 ctClass.addMethod(newMethod);
                 createNewClz(newMethod);
 

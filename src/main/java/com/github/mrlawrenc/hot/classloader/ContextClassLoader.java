@@ -285,57 +285,65 @@ public class ContextClassLoader extends ClassLoader implements BootClassLoader {
         return str.substring(1, str.length() - 6);
     }
 
-    public static void main(String[] args) throws Exception{
+    public static void main(String[] args) throws Exception {
+        String absolutePath = new File("D:\\A").getAbsolutePath();
+
 
         ClassPool classPool = ClassPool.getDefault();
         CtClass boot = classPool.get("com.github.mrlawrenc.hot.boot.Boot");
 
         CtMethod tt = boot.getDeclaredMethod("tt");
-        CtMethod proxyMethod = CtNewMethod.copy(tt, tt.getName() + "$agent", boot, null);
+        CtMethod proxyMethod = CtNewMethod.copy(tt, tt.getName() + "agent", boot, null);
         boot.addMethod(proxyMethod);
 
-        String body = "{\n"
-                + "long start = System.nanoTime();"
-                + " Object result=null;\n"
-                + " try {\n"
-                + " result=($w)" + tt.getName() + "$agent($$);\n"
-                + "}catch(Throwable t){\n"
-                + " throw t;\n"
-                + "}finally{\n"
-                + "long end = System.nanoTime();"
-                + "System.out.println(end-start);" +
-                "}\n"
-                + "return ($r)result;\n"
-                + "}";
+        //改变原方法，且调用新的方法
+        CtClass t = classPool.get(Throwable.class.getName());
+        tt.setBody("{\n"
+                +"long start = System.currentTimeMillis();"
+                +"Object c=($w)$0.ttagent($$);"
+                +" System.out.println(System.currentTimeMillis()-start);"
+                +"return ($r)c;"
+                + "\n}");
 
-        System.out.println(body);
-        proxyMethod.setBody(body);
+        tt.addCatch("{\nSystem.out.println(\"结束:\"+System.nanoTime());\nthrow $e;}",t);
 
-        Class<?> toClass = boot.toClass();
-        toClass.getDeclaredMethod("tt").invoke(toClass.getConstructor());
+
+
+        //作为finally
+        tt.insertAfter(  "{Long end=System.nanoTime();\nSystem.out.println(\"finally end:\");}",true);
+
+
+        //Class<?> toClass = boot.toClass();
+        //toClass.getDeclaredMethod("tt").invoke(toClass.getConstructor());
+
+
+        boot.writeFile(absolutePath);
     }
-
+private static boolean first=true;
     /**
      * 拷贝main方法所在的类，并保存
      */
     public void saveCopyMain() {
-        try {
-            //保存源main方法所在的类的副本
-            ClassPool pool = ClassPool.getDefault();
-            CtClass main = pool.get("com.swust.Main");
-            //如果CtClass通过writeFile(),toClass(),toBytecode()转换了类文件，javassist冻结了CtClass对象。以后是不允许修改这个 CtClass对象
-            //cc.writeFile();//冻结
-            //cc.defrost();//解冻
-            //cc.setSuperclass(...);   // OK since the class is not frozen.可以重新操作CtClass，因为被解冻了
-            main.defrost();
-            main.setName("Hello");
+        if (first){
+            try {
+                //保存源main方法所在的类的副本
+                ClassPool pool = ClassPool.getDefault();
+                CtClass main = pool.get("com.swust.Main");
+                //如果CtClass通过writeFile(),toClass(),toBytecode()转换了类文件，javassist冻结了CtClass对象。以后是不允许修改这个 CtClass对象
+                //cc.writeFile();//冻结
+                //cc.defrost();//解冻
+                //cc.setSuperclass(...);   // OK since the class is not frozen.可以重新操作CtClass，因为被解冻了
+                main.defrost();
+                main.setName("Hello");
 
-            main.writeFile("D:\\B");
-
-            //System.out.println("newMain:"+newMain+"  loader:"+newMain.getClassLoader());
-        } catch (Exception e) {
-            e.printStackTrace();
+                main.writeFile("D:\\B");
+                first=false;
+                //System.out.println("newMain:"+newMain+"  loader:"+newMain.getClassLoader());
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
         }
+
 
         //调用main副本方法
         File proxyFile = new File("D:\\B\\Hello.class");

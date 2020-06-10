@@ -207,8 +207,9 @@ public class Boot {
         System.out.println("测试的静态方法");
     }
 
-    public  void tt() throws InterruptedException {
+    public  String tt(String c) throws InterruptedException {
         System.out.println("tt");
         Thread.sleep(5);
+        return c;
     }
 }
