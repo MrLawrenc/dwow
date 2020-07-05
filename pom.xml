@@ -9,13 +9,13 @@
     <version>1.0-RELEASE</version>
     <packaging>jar</packaging>
 
+
+    <!--切记不要引用其他第三方jar包，很可能出现类找不到异常（尤其fastjson）。
+    如引用fastjson，其他程序（处在tomcat环境中）使用java -agent方式启动，那么是app classloader加载的
+    fastjson，在appclassloader这个类加载器中使用fastjson正常，但是若tomcat中使用fastjson则会报类找不到异常
+    的错，这是因为fastjson只能查找加载fastjson的jar包所在的classloader里面的class，而app classloader遵循双亲委派，
+    所以是不能向下找到tomcat中的类的，因此在tomcat中使用会报错-->
     <dependencies>
-        <!-- https://mvnrepository.com/artifact/com.google.guava/guava -->
-        <dependency>
-            <groupId>com.google.guava</groupId>
-            <artifactId>guava</artifactId>
-            <version>29.0-jre</version>
-        </dependency>
 
         <dependency>
             <groupId>org.javassist</groupId>
@@ -34,17 +34,6 @@
             <artifactId>lombok</artifactId>
             <version>1.18.12</version>
             <scope>compile</scope>
-        </dependency>
-        <dependency>
-            <groupId>junit</groupId>
-            <artifactId>junit</artifactId>
-            <version>4.8.2</version>
-            <scope>test</scope>
-        </dependency>
-        <dependency>
-            <groupId>commons-io</groupId>
-            <artifactId>commons-io</artifactId>
-            <version>2.6</version>
         </dependency>
         <dependency>
             <groupId>org.slf4j</groupId>
