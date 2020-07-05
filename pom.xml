@@ -93,8 +93,9 @@
                             Can-Retransform-Classes: true
                             Premain-Class: com.github.PreMain
                             -->
-                            <Premain-Class>com.github.mrlawrenc.AgentMain</Premain-Class>
+                            <!--<Premain-Class>com.github.mrlawrenc.AgentMain</Premain-Class>-->
                             <Agent-Class>com.github.mrlawrenc.attach.AttachMain</Agent-Class>
+                            <Premain-Class>com.github.mrlawrenc.attach.AttachMain</Premain-Class>
                             <Can-Redefine-Classes>true</Can-Redefine-Classes>
                             <Can-Retransform-Classes>true</Can-Retransform-Classes>
                         </manifestEntries>
