@@ -144,6 +144,7 @@ public class JdbcMonitor extends AbstractMonitor {
             result = proxyConnection((Connection) current.getOldResult());
             current.setNewResult(result);
         }
+
         current.setEnd(System.currentTimeMillis());
         log.info("cost time:{}", current.getEnd() - current.getStart());
         log.info("statistics:{}", current);
