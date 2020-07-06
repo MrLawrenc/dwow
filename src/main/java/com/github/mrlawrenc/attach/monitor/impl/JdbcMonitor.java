@@ -148,6 +148,14 @@ public class JdbcMonitor extends AbstractMonitor {
         current.setEnd(System.currentTimeMillis());
         log.info("cost time:{}", current.getEnd() - current.getStart());
         log.info("statistics:{}", current);
+
+
+        for (StackTraceElement traceElement : Thread.currentThread().getStackTrace()) {
+            String className = traceElement.getClassName();
+            int lineNumber = traceElement.getLineNumber();
+            String methodName = traceElement.getMethodName();
+            log.info("{}: {}#{}", lineNumber, className, methodName);
+        }
         return result;
     }
 
