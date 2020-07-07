@@ -26,7 +26,8 @@ public class TestStack {
         System.out.println("==============end=============");
         Future<?> submit3 = service.submit(() -> new TestStack().t1());
         submit3.get();
-
+        System.out.println("#################################################");
+        testMethod(new SecurityManagerMethod());
     }
 
 
@@ -47,4 +48,53 @@ public class TestStack {
             System.out.println(stackTraceElement);
         }
     }
+
+
+    private static void testMethod(GetCallerClassNameMethod method) {
+        long startTime = System.nanoTime();
+        String className = null;
+        for (int i = 0; i < 1000000; i++) {
+            className = method.getCallerClassName(2);
+        }
+        printElapsedTime(method.getMethodName(), startTime);
+    }
+
+    private static void printElapsedTime(String title, long startTime) {
+        System.out.println(title + ": " + ((double) (System.nanoTime() - startTime)) / 1000000 + " ms.");
+    }
+
+    static abstract class GetCallerClassNameMethod {
+        public abstract String getCallerClassName(int callStackDepth);
+
+        public abstract String getMethodName();
+    }
+
+    static class SecurityManagerMethod extends GetCallerClassNameMethod {
+        public String getCallerClassName(int callStackDepth) {
+            return mySecurityManager.getCallerClassName(callStackDepth);
+        }
+
+        public String getMethodName() {
+            return "SecurityManager";
+        }
+
+        /**
+         * A custom security manager that exposes the getClassContext() information
+         */
+        static class MySecurityManager extends SecurityManager {
+            public String getCallerClassName(int callStackDepth) {
+                System.out.println("======1=====");
+                for (int i = 0; i < getClassContext().length; i++) {
+                    System.out.println(getClassContext()[i].getName());
+                }
+                System.out.println("=======2====");
+                return getClassContext()[callStackDepth].getName();
+            }
+        }
+
+        private final static MySecurityManager mySecurityManager =
+                new MySecurityManager();
+    }
+
+
 }

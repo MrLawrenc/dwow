@@ -1,11 +1,13 @@
 package com.github.mrlawrenc.attach.statistics;
 
 import com.github.mrlawrenc.attach.monitor.Monitor;
+import com.github.mrlawrenc.attach.util.ThreadLocalUtil;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.ToString;
 
 import java.io.Serializable;
+import java.util.Objects;
 
 /**
  * @author MrLawrenc
@@ -14,7 +16,8 @@ import java.io.Serializable;
  * @see Monitor
  */
 @Getter
-@Setter@ToString
+@Setter
+@ToString
 public abstract class Statistics implements Serializable {
 
     /**
@@ -27,6 +30,11 @@ public abstract class Statistics implements Serializable {
     protected String idx;
 
     public Statistics(String idx) {
+        String currentIdx = ThreadLocalUtil.get();
+        if (Objects.nonNull(currentIdx)) {
+            currentIdx += "0";
+            ThreadLocalUtil.set(currentIdx);
+        }
         this.idx = idx;
     }
 

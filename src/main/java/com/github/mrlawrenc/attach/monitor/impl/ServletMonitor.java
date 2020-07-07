@@ -23,7 +23,6 @@ import javax.servlet.http.HttpServletResponse;
 @Slf4j
 public class ServletMonitor extends AbstractMonitor {
     private static final String TARGET_CLZ = "javax.servlet.http.HttpServlet";
-    //private static final String TARGET_CLZ = "javax.servlet.GenericServlet";
     public static AbstractMonitor INSTANCE;
 
     @Override
@@ -39,15 +38,8 @@ public class ServletMonitor extends AbstractMonitor {
 
     @Override
     public CtMethod targetMethod(ClassPool pool, CtClass clz) throws NotFoundException {
-        System.out.println("==================================");
-        System.out.println(clz);
-        System.out.println("==================================");
-        //(Ljavax/servlet/http/HttpServletRequest;Ljavax/servlet/http/HttpServletResponse;)V
-//        CtMethod service = clz.getDeclaredMethod("service", new CtClass[]{pool
-//                .get("javax.servlet.ServletRequest"), pool.get("javax.servlet.ServletResponse")});
-        CtMethod service = clz.getDeclaredMethod("service", new CtClass[]{pool
+        return clz.getDeclaredMethod("service", new CtClass[]{pool
                 .get("javax.servlet.http.HttpServletRequest"), pool.get("javax.servlet.http.HttpServletResponse")});
-        return service;
     }
 
     @Override
@@ -57,12 +49,14 @@ public class ServletMonitor extends AbstractMonitor {
 
     @Override
     public Statistics begin(Object obj, Object... args) {
-        Statistics statistics = new ServletStatistics("0");
+        ServletStatistics statistics = new ServletStatistics("0");
         HttpServletRequest servletRequest = (HttpServletRequest) args[0];
         HttpServletResponse servletResponse = (HttpServletResponse) args[1];
         StringBuffer url = servletRequest.getRequestURL();
-        System.out.println("req url:" + url + " resp:" + servletResponse);
+        statistics.setUrl(url.toString());
+        statistics.setArgs(args);
         statistics.setStartTime(System.currentTimeMillis());
+        statistics.setType(servletRequest.getMethod());
         return statistics;
     }
 
@@ -73,7 +67,8 @@ public class ServletMonitor extends AbstractMonitor {
 
     @Override
     public Object end(Statistics current, Object obj) {
-       // System.out.println("servlet cost time:" + (System.currentTimeMillis() - current.getStart()));
+        current.setEndTime(System.currentTimeMillis());
+        log.info("servlet cost time:" + (current.getEndTime() - current.getStartTime()));
         return obj;
     }
 

@@ -1,7 +1,6 @@
 package com.github.mrlawrenc.attach.monitor;
 
 import com.github.mrlawrenc.attach.statistics.Statistics;
-import com.github.mrlawrenc.attach.util.ThreadLocalUtil;
 import lombok.Data;
 
 import java.lang.reflect.Modifier;
@@ -52,7 +51,7 @@ public class MethodInfo {
             "   return ($r) result;" +
             "}";
     private static final String NEW_SOURCE0 = "{\n" +
-            ThreadLocalUtil.class.getName() + ".set(\"0\");" +
+           // ThreadLocalUtil.class.getName() + ".set(\"0\");" +
             "%s\n" +
             "Object result = null;\n" +
             "try{\n" +
@@ -66,7 +65,7 @@ public class MethodInfo {
             "   return ($r) result;\n" +
             "}";
     private static final String NEW_SOURCE0_VOID = "{\n" +
-            ThreadLocalUtil.class.getName() + ".set(\"0\");" +
+           // ThreadLocalUtil.class.getName() + ".set(\"0\");" +
             "%s\n" +
             "try{\n" +
             "   $0.%s($$);\n" +
