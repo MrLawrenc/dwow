@@ -1,5 +1,7 @@
 package com.github.mrlawrenc.attach.monitor;
 
+import com.github.mrlawrenc.attach.statistics.Statistics;
+import com.github.mrlawrenc.attach.util.ThreadLocalUtil;
 import lombok.Data;
 
 import java.lang.reflect.Modifier;
@@ -50,8 +52,9 @@ public class MethodInfo {
             "   return ($r) result;" +
             "}";
     private static final String NEW_SOURCE0 = "{\n" +
+            ThreadLocalUtil.class.getName() + ".set(\"0\");" +
             "%s\n" +
-            "Object result;\n" +
+            "Object result = null;\n" +
             "try{\n" +
             "   result=($w)$0.%s($$);\n" +
             "}catch(java.lang.Throwable t){\n" +
@@ -62,6 +65,18 @@ public class MethodInfo {
             "}\n" +
             "   return ($r) result;\n" +
             "}";
+    private static final String NEW_SOURCE0_VOID = "{\n" +
+            ThreadLocalUtil.class.getName() + ".set(\"0\");" +
+            "%s\n" +
+            "try{\n" +
+            "   $0.%s($$);\n" +
+            "}catch(java.lang.Throwable t){\n" +
+            "   %s\n" +
+            "   throw t;\n" +
+            "}finally{\n" +
+            "  %s\n" +
+            "}\n" +
+            "}";
 
     public static MethodBuilder newBuilder() {
         return new MethodBuilder();
@@ -69,7 +84,7 @@ public class MethodInfo {
 
 
     public static class MethodBuilder {
-        MethodInfo methodInfo = new MethodInfo();
+        private final MethodInfo methodInfo = new MethodInfo();
 
         /**
          * 以{@link MethodInfo#NEW_SOURCE}来构建
@@ -117,18 +132,39 @@ public class MethodInfo {
             }
             String clzName = monitor.getClass().getName();
             String begin = clzName + " monitor = " + clzName + ".INSTANCE;\n";
-            String statisticName = DefaultStatistics.class.getName();
+            String statisticName = Statistics.class.getName();
             begin += statisticName + " statistic = monitor.begin($0,$args);";
 
             String exception = "monitor.exception(statistic,t);";
 
-            String end = "result = monitor.end(statistic,(Object)result);";
+            String end = "result = monitor.end(statistic,result);";
             String body = String.format(NEW_SOURCE0, begin, oldMethodName, exception, end);
 
             System.out.println(body);
-            methodInfo.setNewBody(body);
-            methodInfo.setNewInfo(true);
-            return methodInfo;
+            this.methodInfo.setNewBody(body);
+            this.methodInfo.setNewInfo(true);
+            return this.methodInfo;
+        }
+
+        public MethodInfo createVoidBody(Monitor monitor, String oldMethodName) {
+            int modifiers = monitor.getClass().getModifiers();
+            if (Modifier.isInterface(modifiers) || Modifier.isAbstract(modifiers)) {
+                throw new IllegalStateException("The current class cannot be interface and abstract!");
+            }
+            String clzName = monitor.getClass().getName();
+            String begin = clzName + " monitor = " + clzName + ".INSTANCE;\n";
+            String statisticName = Statistics.class.getName();
+            begin += statisticName + " statistic = monitor.begin($0,$args);";
+
+            String exception = "monitor.exception(statistic,t);";
+
+            String end = "monitor.end(statistic,null);";
+            String body = String.format(NEW_SOURCE0_VOID, begin, oldMethodName, exception, end);
+
+            System.out.println(body);
+            this.methodInfo.setNewBody(body);
+            this.methodInfo.setNewInfo(true);
+            return this.methodInfo;
         }
 
         public MethodBuilder tryBody(String begin, String oldName, String end) {

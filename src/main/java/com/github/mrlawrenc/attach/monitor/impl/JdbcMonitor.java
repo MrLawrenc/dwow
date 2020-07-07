@@ -1,8 +1,12 @@
 package com.github.mrlawrenc.attach.monitor.impl;
 
 import com.github.mrlawrenc.attach.monitor.AbstractMonitor;
-import com.github.mrlawrenc.attach.monitor.DefaultStatistics;
 import com.github.mrlawrenc.attach.monitor.MethodInfo;
+import com.github.mrlawrenc.attach.statistics.JdbcStatistics;
+import com.github.mrlawrenc.attach.statistics.Statistics;
+import com.github.mrlawrenc.attach.util.ThreadLocalUtil;
+import com.github.mrlawrenc.attach.write.WriterResp;
+import javassist.ClassPool;
 import javassist.CtClass;
 import javassist.CtMethod;
 import javassist.NotFoundException;
@@ -26,7 +30,7 @@ import java.util.Objects;
 @Slf4j
 public class JdbcMonitor extends AbstractMonitor {
     private static final String TARGET_CLZ = "com.mysql.cj.jdbc.NonRegisteringDriver";
-
+    public static AbstractMonitor INSTANCE;
     /**
      * {@link Connection}中需要代理的方法名集合
      */
@@ -69,8 +73,11 @@ public class JdbcMonitor extends AbstractMonitor {
             public Object invoke(Object proxy, Method method, Object[] args) throws Throwable {
                 Object result = method.invoke(connection, args);
                 if (Arrays.asList(PROXY_CONNECTION_METHOD).contains(method.getName()) && result instanceof PreparedStatement) {
-                    System.out.println("url:" + connection.getMetaData().getURL());
-                    System.out.println("sql:" + args[0]);
+                    String s = ThreadLocalUtil.get();
+                    JdbcStatistics statistics = new JdbcStatistics(s+"0");
+                    statistics.setUrl(connection.getMetaData().getURL());
+                    statistics.setSql(args[0].toString());
+                    System.out.println(statistics);
                     result = proxyStatement((PreparedStatement) result);
                 }
                 return result;
@@ -86,16 +93,21 @@ public class JdbcMonitor extends AbstractMonitor {
      */
     private PreparedStatement proxyStatement(PreparedStatement statement) {
         return (PreparedStatement) Proxy.newProxyInstance(JdbcMonitor.class.getClassLoader()
-                , new Class[]{PreparedStatement.class}
-                , (proxy, method, args) -> {
+                , new Class[]{PreparedStatement.class}, (proxy, method, args) -> {
                     Object result = method.invoke(statement, args);
-                    System.out.println("方法名:" + method.getName() + "参数:" + args + " 结果:" + result);
+                    //System.out.println("方法名:" + method.getName() + "参数:" + args + " 结果:" + result);
                     if (Arrays.asList(STATEMENT_METHOD).contains(method.getName())) {
+
+                        JdbcStatistics statistics = new JdbcStatistics(ThreadLocalUtil.get()+"0");
+                        System.out.println("method name:"+method.getName());
                         if (result instanceof ResultSet) {
-                            System.out.println("执行查询操作");
-                        } else {
-                            System.out.println("执行增、删、改操作");
+                            statistics.setResultSet((ResultSet) result);
+                        } else if (result instanceof Integer || result instanceof Long) {
+                            statistics.setCount((Long) result);
+                        } else if (result instanceof Boolean) {
+                            statistics.setSuccess((Boolean) result);
                         }
+                        System.out.println("statistics:" + statistics);
                     }
                     return result;
                 });
@@ -108,7 +120,7 @@ public class JdbcMonitor extends AbstractMonitor {
     }
 
     @Override
-    public CtMethod targetMethod(CtClass clz) throws NotFoundException {
+    public CtMethod targetMethod(ClassPool pool, CtClass clz) throws NotFoundException {
         return clz.getMethod("connect", "(Ljava/lang/String;Ljava/util/Properties;)Ljava/sql/Connection;");
     }
 
@@ -124,40 +136,43 @@ public class JdbcMonitor extends AbstractMonitor {
     }
 
     @Override
-    public DefaultStatistics begin(Object obj, Object... args) {
-        DefaultStatistics defaultStatistics = new DefaultStatistics();
+    public Statistics begin(Object obj, Object... args) {
+        Statistics statistics = new JdbcStatistics("0");
         log.info("begin class:{} args:{}", obj.getClass(), args);
-        defaultStatistics.setStart(System.currentTimeMillis());
-        return defaultStatistics;
+        statistics.setStartTime(System.currentTimeMillis());
+        return statistics;
     }
 
     @Override
-    public void exception(DefaultStatistics statistics, Throwable t) {
+    public void exception(Statistics statistics, Throwable t) {
         statistics.setT(t);
     }
 
     @Override
-    public Object end(DefaultStatistics current, Object obj) {
+    public Object end(Statistics current, Object obj) {
         Object result = obj;
         if (Objects.nonNull(obj) && obj instanceof Connection) {
             current.setOldResult(obj);
             result = proxyConnection((Connection) current.getOldResult());
             current.setNewResult(result);
         }
-
-        current.setEnd(System.currentTimeMillis());
-        log.info("cost time:{}", current.getEnd() - current.getStart());
+        current.setEndTime(System.currentTimeMillis());
         log.info("statistics:{}", current);
 
-
+        log.info("##############################打印堆栈信息##############################");
         for (StackTraceElement traceElement : Thread.currentThread().getStackTrace()) {
             String className = traceElement.getClassName();
             int lineNumber = traceElement.getLineNumber();
             String methodName = traceElement.getMethodName();
             log.info("{}: {}#{}", lineNumber, className, methodName);
         }
+        log.info("##############################打印堆栈信息##############################");
         return result;
     }
 
 
+    @Override
+    public WriterResp write(Statistics statistics) {
+        return null;
+    }
 }

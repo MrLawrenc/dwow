@@ -1,11 +1,10 @@
 package com.github.mrlawrenc.attach.write.impl;
 
-import com.github.mrlawrenc.attach.monitor.Statistics;
+import com.github.mrlawrenc.attach.statistics.Statistics;
 import com.github.mrlawrenc.attach.write.AbstractWriter;
 import com.github.mrlawrenc.attach.write.WriterResp;
 import com.github.mrlawrenc.attach.write.entity.HttpWriterResp;
 import lombok.extern.slf4j.Slf4j;
-import sun.security.util.IOUtils;
 
 import java.io.BufferedInputStream;
 import java.io.IOException;
@@ -59,8 +58,9 @@ public class HttpWriter extends AbstractWriter<String> {
             e.printStackTrace();
         }
         try (InputStream in = new BufferedInputStream(connection.getInputStream())) {
-            byte[] respData = IOUtils.readNBytes(in, in.available());
-            System.out.println(new String(respData));
+            byte[] bytes = new byte[in.available()];
+            in.read(bytes);
+            System.out.println(new String(bytes));
         } catch (IOException e) {
             e.printStackTrace();
         }

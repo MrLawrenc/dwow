@@ -1,4 +1,4 @@
-package com.github.mrlawrenc.attach.monitor;
+package com.github.mrlawrenc.attach;
 
 import java.io.File;
 

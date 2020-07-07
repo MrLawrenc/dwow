@@ -1,6 +1,6 @@
 package com.github.mrlawrenc.attach.write;
 
-import com.github.mrlawrenc.attach.monitor.Statistics;
+import com.github.mrlawrenc.attach.statistics.Statistics;
 
 /**
  * @author : MrLawrenc

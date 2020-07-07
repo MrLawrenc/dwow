@@ -37,7 +37,7 @@ public class AttachMain {
      * @param inst
      */
     public static void agentmain(String agentArgs, Instrumentation inst) throws UnmodifiableClassException {
-        inst.retransformClasses(p(agentArgs, inst).toArray(Class[]::new));
+        inst.retransformClasses((Class<?>[]) p(agentArgs, inst).toArray());
     }
 
     public static List<Class<?>> p(String agentArgs, Instrumentation inst) {

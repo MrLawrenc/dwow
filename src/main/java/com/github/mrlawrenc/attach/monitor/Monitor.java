@@ -1,5 +1,7 @@
 package com.github.mrlawrenc.attach.monitor;
 
+import com.github.mrlawrenc.attach.statistics.Statistics;
+import javassist.ClassPool;
 import javassist.CtClass;
 import javassist.CtMethod;
 import javassist.NotFoundException;
@@ -25,9 +27,10 @@ public interface Monitor {
      * 获取目标方法
      *
      * @param clz 目标方法所在类
+     * @param pool poll
      * @return 目标方法
      */
-    CtMethod targetMethod(CtClass clz) throws NotFoundException;
+    CtMethod targetMethod(ClassPool pool,CtClass clz) throws NotFoundException;
 
     /**
      * 返回植入方法之前的代码
@@ -37,17 +40,17 @@ public interface Monitor {
      */
     MethodInfo getMethodInfo(String oldMethodName);
 
-    DefaultStatistics begin(Object obj, Object... args);
+    Statistics begin(Object obj, Object... args);
 
-    void exception(DefaultStatistics statistics, Throwable t);
+    void exception(Statistics statistics, Throwable t);
 
     /**
      * 原方法执行结果
      *
      * @param statistics 统计类
-     * @param result     返回值
+     * @param result     源方法返回值
      */
-    Object end(DefaultStatistics statistics, Object result);
+    Object end(Statistics statistics, Object result);
 
 
 }

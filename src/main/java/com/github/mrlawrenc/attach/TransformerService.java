@@ -4,6 +4,7 @@ import com.github.mrlawrenc.attach.monitor.AbstractMonitor;
 import com.github.mrlawrenc.attach.monitor.MethodInfo;
 import com.github.mrlawrenc.attach.monitor.Monitor;
 import com.github.mrlawrenc.attach.monitor.impl.JdbcMonitor;
+import com.github.mrlawrenc.attach.monitor.impl.ServletMonitor;
 import javassist.*;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
@@ -30,6 +31,7 @@ public class TransformerService implements ClassFileTransformer {
 
     public TransformerService() {
         monitorList.add(new JdbcMonitor());
+        monitorList.add(new ServletMonitor());
 
         //初始化所有的单例对象
         monitorList.forEach(AbstractMonitor::init);
@@ -42,7 +44,7 @@ public class TransformerService implements ClassFileTransformer {
             boolean flag = false;
             Monitor monitor = null;
             for (Monitor currentMonitor : monitorList) {
-                if (currentMonitor.isTarget(className)) {
+                if (Objects.nonNull(className) && currentMonitor.isTarget(className)) {
                     monitor = currentMonitor;
                     log.info("target class:{}  use monitor:{}", className.replace("/", "."), monitor.getClass().getName());
                     flag = true;
@@ -58,8 +60,8 @@ public class TransformerService implements ClassFileTransformer {
             pool.insertClassPath(new LoaderClassPath(loader));
             CtClass targetClz = pool.get(className.replaceAll("/", "."));
 
-            CtMethod method = monitor.targetMethod(targetClz);
-            if (Objects.isNull(method)){
+            CtMethod method = monitor.targetMethod(pool,targetClz);
+            if (Objects.isNull(method)) {
                 return new byte[0];
             }
 

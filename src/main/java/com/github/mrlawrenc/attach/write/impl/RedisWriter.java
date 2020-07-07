@@ -1,6 +1,6 @@
 package com.github.mrlawrenc.attach.write.impl;
 
-import com.github.mrlawrenc.attach.monitor.Statistics;
+import com.github.mrlawrenc.attach.statistics.Statistics;
 import com.github.mrlawrenc.attach.write.AbstractWriter;
 import com.github.mrlawrenc.attach.write.WriterResp;
 
