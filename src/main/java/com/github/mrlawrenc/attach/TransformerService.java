@@ -23,6 +23,15 @@ import java.util.Objects;
 public class TransformerService implements ClassFileTransformer {
     private static final String AGENT_SUFFIX = "$agent";
 
+    private static final String STACK_SRC = "{" +
+            "StackTraceElement[] stackTrace = Thread.currentThread().getStackTrace();\n" +
+            "StackTraceElement stackTraceElement = stackTrace[1];\n" +
+            "com.github.mrlawrenc.attach.util.StackBinaryTree stackTree = com.github.mrlawrenc.attach.util.ThreadLocalUtil.globalThreadLocal.get();\n" +
+            "if(Objects.nonNull(stackTree)){\n" +
+            "   stackTree.addNode(stackTraceElement);\n" +
+            "}\n" +
+            "}";
+
     /**
      * 所有monitor实现类集合
      */
@@ -33,58 +42,60 @@ public class TransformerService implements ClassFileTransformer {
         monitorList.add(new JdbcMonitor());
         monitorList.add(new ServletMonitor());
 
-        //初始化所有的单例对象
+        //初始化所有的单例对象 fix
         monitorList.forEach(AbstractMonitor::init);
     }
 
     @SneakyThrows
     @Override
     public byte[] transform(ClassLoader loader, String className, Class<?> classBeingRedefined, ProtectionDomain protectionDomain, byte[] data) {
+/*        int modifiers = classBeingRedefined.getModifiers();
+        if (Modifier.isNative(modifiers) || Modifier.isEnum(modifiers) || Modifier.isInterface(modifiers)) {
+            System.out.println(className);
+            return new byte[0];
+        }*/
+
+        boolean flag = false;
+        Monitor monitor = null;
+        for (Monitor currentMonitor : monitorList) {
+            if (Objects.nonNull(className) && currentMonitor.isTarget(className)) {
+                monitor = currentMonitor;
+                flag = true;
+                break;
+            }
+        }
         try {
-            boolean flag = false;
-            Monitor monitor = null;
-            for (Monitor currentMonitor : monitorList) {
-                if (Objects.nonNull(className) && currentMonitor.isTarget(className)) {
-                    monitor = currentMonitor;
-                    log.info("target class:{}  use monitor:{}", className.replace("/", "."), monitor.getClass().getName());
-                    flag = true;
-                    break;
+            if (flag) {
+                ClassPool pool = new ClassPool(true);
+                pool.insertClassPath(new LoaderClassPath(loader));
+                CtClass targetClz = pool.get(className.replaceAll("/", "."));
+                log.info("target class:{}  use monitor:{}", className.replace("/", "."), monitor.getClass().getName());
+                CtMethod method = monitor.targetMethod(pool, targetClz);
+                if (Objects.nonNull(method)) {
+                    String newMethodName = method.getName() + AGENT_SUFFIX;
+                    log.info("start copy new method : {}", newMethodName);
+                    CtMethod newMethod = CtNewMethod.copy(method, newMethodName, targetClz, null);
+                    targetClz.addMethod(newMethod);
+
+                    CtClass throwable = pool.get("java.lang.Throwable");
+
+                    MethodInfo methodInfo = monitor.getMethodInfo(newMethodName);
+                    if (methodInfo.isNewInfo()) {
+                        method.setBody(methodInfo.getNewBody());
+                    } else {
+                        method.setBody(methodInfo.getTryBody());
+                        method.addCatch(methodInfo.getCatchBody(), throwable);
+                        method.insertAfter(methodInfo.getFinallyBody(), true);
+                    }
+                    log.info("copy method end");
+                    return targetClz.toBytecode();
                 }
-            }
-            if (!flag) {
-                return new byte[0];
-            }
-
-
-            ClassPool pool = new ClassPool(true);
-            pool.insertClassPath(new LoaderClassPath(loader));
-            CtClass targetClz = pool.get(className.replaceAll("/", "."));
-
-            CtMethod method = monitor.targetMethod(pool,targetClz);
-            if (Objects.isNull(method)) {
-                return new byte[0];
-            }
-
-            String newMethodName = method.getName() + AGENT_SUFFIX;
-            log.info("start copy new method : {}", newMethodName);
-            CtMethod newMethod = CtNewMethod.copy(method, newMethodName, targetClz, null);
-            targetClz.addMethod(newMethod);
-
-            CtClass throwable = pool.get("java.lang.Throwable");
-
-            MethodInfo methodInfo = monitor.getMethodInfo(newMethodName);
-            if (methodInfo.isNewInfo()) {
-                method.setBody(methodInfo.getNewBody());
             } else {
-                method.setBody(methodInfo.getTryBody());
-                method.addCatch(methodInfo.getCatchBody(), throwable);
-                method.insertAfter(methodInfo.getFinallyBody(), true);
             }
-            log.info("copy method end");
-            return targetClz.toBytecode();
         } catch (Exception e) {
             log.error("error", e);
         }
+
         return new byte[0];
     }
 }

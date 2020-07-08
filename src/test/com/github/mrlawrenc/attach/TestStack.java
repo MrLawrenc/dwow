@@ -1,5 +1,9 @@
 package com.github.mrlawrenc.attach;
 
+import com.github.mrlawrenc.attach.util.StackBinaryTree;
+
+import java.util.Map;
+import java.util.Objects;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
@@ -11,23 +15,35 @@ import java.util.concurrent.Future;
  * 测试线程堆栈信息获取，包括线程池线程复用的情况
  */
 public class TestStack {
+    static InheritableThreadLocal<Integer> inheritableThreadLocal = new InheritableThreadLocal<>();
+
+    static InheritableThreadLocal<StackBinaryTree> testLocal = new InheritableThreadLocal<>();
+
+    static ThreadLocal<Integer> threadLocal = new ThreadLocal<>();
 
     public static void main(String[] args) throws Exception {
         //普通堆栈获取
+        inheritableThreadLocal.set(1);
+        threadLocal.set(1);
         new TestStack().t1();
         System.out.println("============simple===============");
         //线程池线程复用情况下，堆栈是否会循环
         ExecutorService service = Executors.newSingleThreadExecutor();
-        Future<?> submit1 = service.submit(() -> new TestStack().t1());
-        submit1.get();
+        new TestStack().t0(service);
         System.out.println("==============one=============");
+
         Future<?> submit2 = service.submit(() -> new TestStack().t1());
         submit2.get();
         System.out.println("==============end=============");
         Future<?> submit3 = service.submit(() -> new TestStack().t1());
         submit3.get();
         System.out.println("#################################################");
-        testMethod(new SecurityManagerMethod());
+        //testMethod(new SecurityManagerMethod());
+    }
+
+    public void t0(ExecutorService service) throws Exception {
+        Future<?> submit1 = service.submit(() -> new TestStack().t1());
+        submit1.get();
     }
 
 
@@ -44,9 +60,19 @@ public class TestStack {
     }
 
     public void t4() {
+        System.out.println("Thread:" + Thread.currentThread().getName());
+        System.out.println("threadLocal:" + threadLocal.get());
+        Integer integer = inheritableThreadLocal.get();
+        if (Objects.nonNull(integer)){
+            inheritableThreadLocal.set(integer+1);
+        }
+        System.out.println("current stack:"+Thread.currentThread().getStackTrace()[1]);
+        System.out.println("inheritableThreadLocal:" + inheritableThreadLocal.get());
         for (StackTraceElement stackTraceElement : Thread.currentThread().getStackTrace()) {
             System.out.println(stackTraceElement);
         }
+
+        Map<Thread, StackTraceElement[]> allStackTraces = Thread.getAllStackTraces();
     }
 
 
