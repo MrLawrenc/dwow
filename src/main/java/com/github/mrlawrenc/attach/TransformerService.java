@@ -106,6 +106,7 @@ public class TransformerService implements ClassFileTransformer {
                     log.info("植入堆栈的类:" + className + "#" + method.getName());
                     method.insertBefore(STACK_SRC);
 
+                    //也可以使用如下方法插入堆栈
 /*                    method.addLocalVariable("stackTree",pool.get(StackBinaryTree.class.getName()));
                     method.addLocalVariable("stackTraceElement",pool.get(StackTraceElement.class.getName()));
                     String src="{" +
