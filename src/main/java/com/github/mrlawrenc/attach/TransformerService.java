@@ -5,6 +5,8 @@ import com.github.mrlawrenc.attach.monitor.MethodInfo;
 import com.github.mrlawrenc.attach.monitor.Monitor;
 import com.github.mrlawrenc.attach.monitor.impl.JdbcMonitor;
 import com.github.mrlawrenc.attach.monitor.impl.ServletMonitor;
+import com.github.mrlawrenc.attach.util.StackBinaryTree;
+import com.github.mrlawrenc.attach.util.ThreadLocalUtil;
 import javassist.*;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
@@ -24,10 +26,9 @@ public class TransformerService implements ClassFileTransformer {
     private static final String AGENT_SUFFIX = "$agent";
 
     private static final String STACK_SRC = "{" +
-            "StackTraceElement[] stackTrace = Thread.currentThread().getStackTrace();\n" +
-            "StackTraceElement stackTraceElement = stackTrace[1];\n" +
-            "com.github.mrlawrenc.attach.util.StackBinaryTree stackTree = com.github.mrlawrenc.attach.util.ThreadLocalUtil.globalThreadLocal.get();\n" +
-            "if(Objects.nonNull(stackTree)){\n" +
+            "StackTraceElement stackTraceElement = Thread.currentThread().getStackTrace()[1];\n" +
+            StackBinaryTree.class.getName() + " stackTree = " + ThreadLocalUtil.class.getName() + ".globalThreadLocal.get();\n" +
+            "if(java.util.Objects.nonNull(stackTree)){\n" +
             "   stackTree.addNode(stackTraceElement);\n" +
             "}\n" +
             "}";
@@ -49,16 +50,24 @@ public class TransformerService implements ClassFileTransformer {
     @SneakyThrows
     @Override
     public byte[] transform(ClassLoader loader, String className, Class<?> classBeingRedefined, ProtectionDomain protectionDomain, byte[] data) {
-/*        int modifiers = classBeingRedefined.getModifiers();
-        if (Modifier.isNative(modifiers) || Modifier.isEnum(modifiers) || Modifier.isInterface(modifiers)) {
-            System.out.println(className);
+        if (Objects.isNull(className) || className.replaceAll("/", ".").equals(StackBinaryTree.class.getName())) {
             return new byte[0];
-        }*/
+        }
+        ClassPool pool = new ClassPool(true);
+        pool.insertClassPath(new LoaderClassPath(loader));
+        //若需要在系统类里面植入代码（即当前loader为app loader的双亲），需要在class pool中加入app loader ，否则无法找到相关植入的类
+        pool.appendClassPath(new ClassClassPath(StackBinaryTree.class));
+        CtClass targetClz = pool.get(className.replaceAll("/", "."));
+
+        int modifiers = targetClz.getModifiers();
+        if (Modifier.isNative(modifiers) || Modifier.isEnum(modifiers) || Modifier.isInterface(modifiers)) {
+            return new byte[0];
+        }
 
         boolean flag = false;
         Monitor monitor = null;
         for (Monitor currentMonitor : monitorList) {
-            if (Objects.nonNull(className) && currentMonitor.isTarget(className)) {
+            if (currentMonitor.isTarget(className)) {
                 monitor = currentMonitor;
                 flag = true;
                 break;
@@ -66,9 +75,6 @@ public class TransformerService implements ClassFileTransformer {
         }
         try {
             if (flag) {
-                ClassPool pool = new ClassPool(true);
-                pool.insertClassPath(new LoaderClassPath(loader));
-                CtClass targetClz = pool.get(className.replaceAll("/", "."));
                 log.info("target class:{}  use monitor:{}", className.replace("/", "."), monitor.getClass().getName());
                 CtMethod method = monitor.targetMethod(pool, targetClz);
                 if (Objects.nonNull(method)) {
@@ -90,7 +96,29 @@ public class TransformerService implements ClassFileTransformer {
                     log.info("copy method end");
                     return targetClz.toBytecode();
                 }
-            } else {
+            } else if (className.replaceAll("/", ".").startsWith("com.huize")) {
+                CtMethod[] methods = targetClz.getDeclaredMethods();
+                for (CtMethod method : methods) {
+                    if (Modifier.isAbstract(method.getModifiers()) || Modifier.isNative(method.getModifiers())) {
+                        continue;
+                    }
+                    //插入堆栈统计
+                    log.info("植入堆栈的类:" + className + "#" + method.getName());
+                    method.insertBefore(STACK_SRC);
+
+/*                    method.addLocalVariable("stackTree",pool.get(StackBinaryTree.class.getName()));
+                    method.addLocalVariable("stackTraceElement",pool.get(StackTraceElement.class.getName()));
+                    String src="{" +
+                            "stackTraceElement = Thread.currentThread().getStackTrace()[1];\n" +
+                            "stackTree = " + ThreadLocalUtil.class.getName() + ".globalThreadLocal.get();\n" +
+                            "System.out.println(\"#########我是植入代码#########\");" +
+                            "if(java.util.Objects.nonNull(stackTree)){\n" +
+                            "   stackTree.addNode(stackTraceElement);\n" +
+                            "}\n" +
+                            "}";
+                    method.insertBefore(src);*/
+                }
+                return targetClz.toBytecode();
             }
         } catch (Exception e) {
             log.error("error", e);

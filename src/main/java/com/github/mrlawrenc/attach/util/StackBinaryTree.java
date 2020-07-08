@@ -1,19 +1,27 @@
 package com.github.mrlawrenc.attach.util;
 
+import lombok.Data;
+
 import java.util.concurrent.atomic.AtomicInteger;
 
 /**
+ * @author MrLawrenc
+ * date  2020/7/8 22:49
  * 堆栈二叉树
  */
+@Data
 public class StackBinaryTree {
-    public static InheritableThreadLocal<StackBinaryTree> testLocal = new InheritableThreadLocal<>();
     /**
      * 线程标识，若处在线程池循环中，则会在插桩处更新该标识
      */
     private final AtomicInteger currentThreadFlag = new AtomicInteger(Integer.MIN_VALUE);
 
     public void addNode(StackTraceElement stackTraceElement) {
-        System.out.println("stack:"+stackTraceElement);
+        System.out.println("收到堆栈信息:" + Thread.currentThread() + " stack : " + stackTraceElement);
+    }
+
+    public StackBinaryTree() {
+        currentThreadFlag.set(0);
     }
 
     private static class Node {
@@ -27,15 +35,4 @@ public class StackBinaryTree {
         //private Node right;
     }
 
-    public void t() {
-        String src = "{" +
-                "com.github.mrlawrenc.attach.util.StackBinaryTree binaryTree = com.github.mrlawrenc.attach.util.StackBinaryTree.testLocal.get();\n" +
-                "        if (Objects.nonNull(binaryTree)){\n" +
-                "            //代表为子堆栈节点，需要加入\n" +
-                "        }" +
-                "" +
-                "}";
-
-
-    }
 }

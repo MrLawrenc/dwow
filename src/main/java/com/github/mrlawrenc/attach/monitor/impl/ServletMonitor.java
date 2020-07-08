@@ -4,6 +4,8 @@ import com.github.mrlawrenc.attach.monitor.AbstractMonitor;
 import com.github.mrlawrenc.attach.monitor.MethodInfo;
 import com.github.mrlawrenc.attach.statistics.ServletStatistics;
 import com.github.mrlawrenc.attach.statistics.Statistics;
+import com.github.mrlawrenc.attach.util.StackBinaryTree;
+import com.github.mrlawrenc.attach.util.ThreadLocalUtil;
 import com.github.mrlawrenc.attach.write.WriterResp;
 import javassist.ClassPool;
 import javassist.CtClass;
@@ -49,6 +51,8 @@ public class ServletMonitor extends AbstractMonitor {
 
     @Override
     public Statistics begin(Object obj, Object... args) {
+        ThreadLocalUtil.globalThreadLocal.set(new StackBinaryTree());
+        System.out.println(Thread.currentThread().getName()+" servlet 获取local值:"+ ThreadLocalUtil.globalThreadLocal.get());
         ServletStatistics statistics = new ServletStatistics("0");
         HttpServletRequest servletRequest = (HttpServletRequest) args[0];
         HttpServletResponse servletResponse = (HttpServletResponse) args[1];
@@ -69,6 +73,7 @@ public class ServletMonitor extends AbstractMonitor {
     public Object end(Statistics current, Object obj) {
         current.setEndTime(System.currentTimeMillis());
         log.info("servlet cost time:" + (current.getEndTime() - current.getStartTime()));
+        System.out.println(Thread.currentThread().getName()+" servlet 获取local值:"+ ThreadLocalUtil.globalThreadLocal.get());
         return obj;
     }
 
