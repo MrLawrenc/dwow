@@ -20,6 +20,11 @@ public class TestStack {
     static InheritableThreadLocal<StackBinaryTree> testLocal = new InheritableThreadLocal<>();
 
     static ThreadLocal<Integer> threadLocal = new ThreadLocal<>();
+    private String testSet;
+
+    public void setTestSet(String testSet) {
+        this.testSet = testSet;
+    }
 
     public static void main(String[] args) throws Exception {
         //普通堆栈获取
@@ -44,11 +49,15 @@ public class TestStack {
     public void t0(ExecutorService service) throws Exception {
         Future<?> submit1 = service.submit(() -> new TestStack().t1());
         submit1.get();
+        Class<? extends TestStack> aClass = getClass();
+
     }
 
 
     public void t1() {
+        new TestStack().setTestSet("测试set方法是否存在堆栈信息");
         t2();
+        StackTraceElement[] stackTrace = Thread.currentThread().getStackTrace();
     }
 
     public void t2() {
@@ -57,6 +66,8 @@ public class TestStack {
 
     public void t3() {
         t4();
+    }
+    public void t5() {
     }
 
     public void t4() {

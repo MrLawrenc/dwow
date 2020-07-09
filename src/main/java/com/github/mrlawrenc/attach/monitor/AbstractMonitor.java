@@ -1,12 +1,12 @@
 package com.github.mrlawrenc.attach.monitor;
 
-import com.github.mrlawrenc.attach.write.Writer;
+import com.github.mrlawrenc.attach.write.impl.FileWriter;
 
 /**
  * @author : MrLawrenc
  * date  2020/7/4 19:02
  */
-public abstract class AbstractMonitor implements Monitor, Writer {
+public abstract class AbstractMonitor extends FileWriter implements Monitor {
 
     /**
      * 内部调用，初始化所有单例对象，子类自行实现

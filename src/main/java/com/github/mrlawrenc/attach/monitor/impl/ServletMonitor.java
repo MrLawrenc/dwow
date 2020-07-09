@@ -15,6 +15,7 @@ import lombok.extern.slf4j.Slf4j;
 
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
+import java.util.Objects;
 
 /**
  * @author : MrLawrenc
@@ -51,8 +52,17 @@ public class ServletMonitor extends AbstractMonitor {
 
     @Override
     public Statistics begin(Object obj, Object... args) {
-        ThreadLocalUtil.globalThreadLocal.set(new StackBinaryTree());
-        System.out.println(Thread.currentThread().getName()+" servlet 获取local值:"+ ThreadLocalUtil.globalThreadLocal.get());
+        StackBinaryTree stackBinaryTree = ThreadLocalUtil.globalThreadLocal.get();
+        if (Objects.nonNull(stackBinaryTree)) {
+            //证明该线程复用了，也意味着上一次代码调用堆栈已经统计完成，需要保存当前stack
+
+            int newValue = stackBinaryTree.getCurrentThreadFlag().incrementAndGet();
+            ThreadLocalUtil.globalThreadLocal.set(new StackBinaryTree(newValue,stackBinaryTree));
+            log.info("stackBinaryTree parent value update -> {}", newValue);
+        } else {
+            ThreadLocalUtil.globalThreadLocal.set(new StackBinaryTree());
+        }
+        System.out.println(Thread.currentThread().getName() + " servlet 获取local值:" + ThreadLocalUtil.globalThreadLocal.get());
         ServletStatistics statistics = new ServletStatistics("0");
         HttpServletRequest servletRequest = (HttpServletRequest) args[0];
         HttpServletResponse servletResponse = (HttpServletResponse) args[1];
@@ -73,7 +83,7 @@ public class ServletMonitor extends AbstractMonitor {
     public Object end(Statistics current, Object obj) {
         current.setEndTime(System.currentTimeMillis());
         log.info("servlet cost time:" + (current.getEndTime() - current.getStartTime()));
-        System.out.println(Thread.currentThread().getName()+" servlet 获取local值:"+ ThreadLocalUtil.globalThreadLocal.get());
+        System.out.println(Thread.currentThread().getName() + " servlet 获取local值:" + ThreadLocalUtil.globalThreadLocal.get());
         return obj;
     }
 

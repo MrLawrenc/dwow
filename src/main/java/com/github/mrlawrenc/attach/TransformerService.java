@@ -14,8 +14,11 @@ import lombok.extern.slf4j.Slf4j;
 import java.lang.instrument.ClassFileTransformer;
 import java.security.ProtectionDomain;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 /**
  * @author : MrLawrenc
@@ -24,9 +27,14 @@ import java.util.Objects;
 @Slf4j
 public class TransformerService implements ClassFileTransformer {
     private static final String AGENT_SUFFIX = "$agent";
+    /**
+     * 堆栈插桩需要排除的方法
+     */
+    private static final List<String> EXCLUDE_METHOD = Arrays.asList("toString", "equals", "hashCode");
 
     private static final String STACK_SRC = "{" +
-            "StackTraceElement stackTraceElement = Thread.currentThread().getStackTrace()[1];\n" +
+            //"StackTraceElement stackTraceElement = Thread.currentThread().getStackTrace()[1];\n" +
+            "StackTraceElement[] stackTraceElement = Thread.currentThread().getStackTrace();\n" +
             StackBinaryTree.class.getName() + " stackTree = " + ThreadLocalUtil.class.getName() + ".globalThreadLocal.get();\n" +
             "if(java.util.Objects.nonNull(stackTree)){\n" +
             "   stackTree.addNode(stackTraceElement);\n" +
@@ -73,6 +81,7 @@ public class TransformerService implements ClassFileTransformer {
                 break;
             }
         }
+        String clzName = className.replaceAll("/", ".");
         try {
             if (flag) {
                 log.info("target class:{}  use monitor:{}", className.replace("/", "."), monitor.getClass().getName());
@@ -96,14 +105,27 @@ public class TransformerService implements ClassFileTransformer {
                     log.info("copy method end");
                     return targetClz.toBytecode();
                 }
-            } else if (className.replaceAll("/", ".").startsWith("com.huize")) {
+            } else if (clzName.startsWith("com.huize") && !clzName.contains("sun") && !className.contains("java")) {
                 CtMethod[] methods = targetClz.getDeclaredMethods();
+                List<String> fieldNameList = Stream.of(targetClz.getDeclaredFields())
+                        .map(field -> field.getName().toLowerCase())
+                        .collect(Collectors.toList());
+
                 for (CtMethod method : methods) {
                     if (Modifier.isAbstract(method.getModifiers()) || Modifier.isNative(method.getModifiers())) {
                         continue;
                     }
+                    if (EXCLUDE_METHOD.contains(method.getName())) {
+                        continue;
+                    }
+                    String name = method.getName();
+                    if ((name.startsWith("set") || name.startsWith("get")) && fieldNameList.contains(name.substring(3).toLowerCase())) {
+                        //排除getter setter
+                        continue;
+                    }
+
                     //插入堆栈统计
-                    log.info("植入堆栈的类:" + className + "#" + method.getName());
+                    log.info("植入堆栈的类:" + className + "#" + name);
                     method.insertBefore(STACK_SRC);
 
                     //也可以使用如下方法插入堆栈

@@ -1,7 +1,7 @@
 package com.github.mrlawrenc.attach.write.impl;
 
-import com.github.mrlawrenc.attach.statistics.Statistics;
 import com.github.mrlawrenc.attach.write.AbstractWriter;
+import com.github.mrlawrenc.attach.write.Writeable;
 import com.github.mrlawrenc.attach.write.WriterResp;
 import lombok.extern.slf4j.Slf4j;
 
@@ -24,7 +24,7 @@ public class MysqlWriter extends AbstractWriter<String> {
     }
 
     @Override
-    public WriterResp write(Statistics statistics) {
+    public WriterResp write(Writeable writeable) {
         return null;
     }
 }

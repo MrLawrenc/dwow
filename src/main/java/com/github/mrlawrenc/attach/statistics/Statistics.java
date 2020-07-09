@@ -2,6 +2,7 @@ package com.github.mrlawrenc.attach.statistics;
 
 import com.github.mrlawrenc.attach.monitor.Monitor;
 import com.github.mrlawrenc.attach.util.ThreadLocalUtil;
+import com.github.mrlawrenc.attach.write.Writeable;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.ToString;
@@ -18,7 +19,7 @@ import java.util.Objects;
 @Getter
 @Setter
 @ToString
-public abstract class Statistics implements Serializable {
+public abstract class Statistics implements Serializable, Writeable {
 
     /**
      * 获取当前统计类索引信息
