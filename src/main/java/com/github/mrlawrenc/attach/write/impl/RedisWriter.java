@@ -15,7 +15,7 @@ public class RedisWriter  extends AbstractWriter<String> {
     }
 
     @Override
-    protected void destroy() {
+    public void destroy() {
 
     }
 

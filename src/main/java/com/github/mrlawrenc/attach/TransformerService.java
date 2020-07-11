@@ -5,7 +5,7 @@ import com.github.mrlawrenc.attach.monitor.MethodInfo;
 import com.github.mrlawrenc.attach.monitor.Monitor;
 import com.github.mrlawrenc.attach.monitor.impl.JdbcMonitor;
 import com.github.mrlawrenc.attach.monitor.impl.ServletMonitor;
-import com.github.mrlawrenc.attach.util.StackBinaryTree;
+import com.github.mrlawrenc.attach.util.StackNode;
 import com.github.mrlawrenc.attach.util.ThreadLocalUtil;
 import javassist.*;
 import lombok.SneakyThrows;
@@ -26,18 +26,40 @@ import java.util.stream.Stream;
  */
 @Slf4j
 public class TransformerService implements ClassFileTransformer {
-    private static final String AGENT_SUFFIX = "$agent";
     /**
-     * 堆栈插桩需要排除的方法
+     * 插桩复制之后的方法名后缀
      */
-    private static final List<String> EXCLUDE_METHOD = Arrays.asList("toString", "equals", "hashCode");
+    private static final String AGENT_SUFFIX = "$lawrence";
 
-    private static final String STACK_SRC = "{" +
+
+    /**
+     * 需要统计堆栈数据的包
+     */
+    private static final List<String> STACK_BASE_PKG = Arrays.asList("com.huize");
+    /**
+     * 统计堆栈数据时需要排除的包
+     */
+    private static final List<String> STACK_EXCLUDE_PKG = Arrays.asList("java", "sun");
+    /**
+     * 统计堆栈数据时需要排除的方法
+     */
+    private static final List<String> STACK_EXCLUDE_METHOD = Arrays.asList("toString", "equals", "hashCode");
+    /**
+     * 统计堆栈数据时 排除getter和setter方法
+     */
+    private static final List<String> STACK_EXCLUDE_GET_AND_SET = Arrays.asList("get", "set");
+
+    private static final String STACK_SRC = "{\n" +
             //"StackTraceElement stackTraceElement = Thread.currentThread().getStackTrace()[1];\n" +
-            "StackTraceElement[] stackTraceElement = Thread.currentThread().getStackTrace();\n" +
-            StackBinaryTree.class.getName() + " stackTree = " + ThreadLocalUtil.class.getName() + ".globalThreadLocal.get();\n" +
-            "if(java.util.Objects.nonNull(stackTree)){\n" +
-            "   stackTree.addNode(stackTraceElement);\n" +
+            // "StackTraceElement[] stackTraceElement = Thread.currentThread().getStackTrace();\n" +
+            // "StackTraceElement[] stackTraceElement = new Throwable().getStackTrace();\n" +
+            // StackNode.class.getName() + " stackNode = " + ThreadLocalUtil.class.getName() + ".globalThreadLocal.get();\n" +
+            // "if(java.util.Objects.nonNull(stackNode)){\n" +
+            //  "   stackTree.addNode(stackTraceElement);\n" +
+            //  "}\n" +
+            StackNode.class.getName() + " stackNode = " + ThreadLocalUtil.class.getName() + ".globalThreadLocal.get();\n" +
+            "if(java.util.Objects.nonNull(stackNode)){\n" +
+            "   stackNode.addNode();\n" +
             "}\n" +
             "}";
 
@@ -58,13 +80,13 @@ public class TransformerService implements ClassFileTransformer {
     @SneakyThrows
     @Override
     public byte[] transform(ClassLoader loader, String className, Class<?> classBeingRedefined, ProtectionDomain protectionDomain, byte[] data) {
-        if (Objects.isNull(className) || className.replaceAll("/", ".").equals(StackBinaryTree.class.getName())) {
+        if (Objects.isNull(className) || className.replaceAll("/", ".").equals(StackNode.class.getName())) {
             return new byte[0];
         }
         ClassPool pool = new ClassPool(true);
         pool.insertClassPath(new LoaderClassPath(loader));
         //若需要在系统类里面植入代码（即当前loader为app loader的双亲），需要在class pool中加入app loader ，否则无法找到相关植入的类
-        pool.appendClassPath(new ClassClassPath(StackBinaryTree.class));
+        pool.appendClassPath(new ClassClassPath(StackNode.class));
         CtClass targetClz = pool.get(className.replaceAll("/", "."));
 
         int modifiers = targetClz.getModifiers();
@@ -84,15 +106,15 @@ public class TransformerService implements ClassFileTransformer {
         String clzName = className.replaceAll("/", ".");
         try {
             if (flag) {
-                log.info("target class:{}  use monitor:{}", className.replace("/", "."), monitor.getClass().getName());
                 CtMethod method = monitor.targetMethod(pool, targetClz);
                 if (Objects.nonNull(method)) {
+                    log.info("target {}#{}  use monitor:{}", clzName, method.getName(), monitor.getClass().getName());
                     String newMethodName = method.getName() + AGENT_SUFFIX;
                     log.info("start copy new method : {}", newMethodName);
                     CtMethod newMethod = CtNewMethod.copy(method, newMethodName, targetClz, null);
                     targetClz.addMethod(newMethod);
 
-                    CtClass throwable = pool.get("java.lang.Throwable");
+                    CtClass throwable = pool.get(Throwable.class.getName());
 
                     MethodInfo methodInfo = monitor.getMethodInfo(newMethodName);
                     if (methodInfo.isNewInfo()) {
@@ -102,34 +124,55 @@ public class TransformerService implements ClassFileTransformer {
                         method.addCatch(methodInfo.getCatchBody(), throwable);
                         method.insertAfter(methodInfo.getFinallyBody(), true);
                     }
-                    log.info("copy method end");
+                    log.info("copy method{} end", method.getName());
                     return targetClz.toBytecode();
                 }
-            } else if (clzName.startsWith("com.huize") && !clzName.contains("sun") && !className.contains("java")) {
+            } else {
+                for (String excludePkg : STACK_EXCLUDE_PKG) {
+                    if (className.startsWith(excludePkg)) {
+                        return new byte[0];
+                    }
+                }
+
+                boolean isStackClz = false;
+                for (String stackBasePkg : STACK_BASE_PKG) {
+                    if (clzName.startsWith(stackBasePkg)) {
+                        isStackClz = true;
+                        break;
+                    }
+                }
+                if (!isStackClz) {
+                    return new byte[0];
+                }
+
+                //以下是符合堆栈统计的class，插入堆栈统计代码
                 CtMethod[] methods = targetClz.getDeclaredMethods();
                 List<String> fieldNameList = Stream.of(targetClz.getDeclaredFields())
                         .map(field -> field.getName().toLowerCase())
                         .collect(Collectors.toList());
 
+                one:
                 for (CtMethod method : methods) {
                     if (Modifier.isAbstract(method.getModifiers()) || Modifier.isNative(method.getModifiers())) {
                         continue;
                     }
-                    if (EXCLUDE_METHOD.contains(method.getName())) {
+                    if (STACK_EXCLUDE_METHOD.contains(method.getName())) {
                         continue;
                     }
-                    String name = method.getName();
-                    if ((name.startsWith("set") || name.startsWith("get")) && fieldNameList.contains(name.substring(3).toLowerCase())) {
-                        //排除getter setter
-                        continue;
+                    String methodName = method.getName();
+
+                    for (String getAndSet : STACK_EXCLUDE_GET_AND_SET) {
+                        if (methodName.startsWith(getAndSet) && fieldNameList.contains(methodName.substring(3).toLowerCase())) {
+                            continue one;
+                        }
                     }
 
-                    //插入堆栈统计
-                    log.info("植入堆栈的类:" + className + "#" + name);
+                    //插入堆栈统计代码
+                    log.info("insert stack node : " + className + "#" + methodName);
                     method.insertBefore(STACK_SRC);
 
                     //也可以使用如下方法插入堆栈
-/*                    method.addLocalVariable("stackTree",pool.get(StackBinaryTree.class.getName()));
+/*                    method.addLocalVariable("stackTree",pool.get(StackNode.class.getName()));
                     method.addLocalVariable("stackTraceElement",pool.get(StackTraceElement.class.getName()));
                     String src="{" +
                             "stackTraceElement = Thread.currentThread().getStackTrace()[1];\n" +

@@ -5,7 +5,7 @@ package com.github.mrlawrenc.attach.util;
  * date   2020/7/7 16:50
  */
 public class ThreadLocalUtil {
-    public static InheritableThreadLocal<StackBinaryTree> globalThreadLocal = new InheritableThreadLocal<>();
+    public static InheritableThreadLocal<StackNode> globalThreadLocal = new InheritableThreadLocal<>();
 
 
 

@@ -19,7 +19,7 @@ public class MysqlWriter extends AbstractWriter<String> {
     }
 
     @Override
-    protected void destroy() {
+    public void destroy() {
 
     }
 

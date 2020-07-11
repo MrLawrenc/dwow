@@ -12,8 +12,4 @@ public abstract class AbstractWriter<T> implements Writer {
      */
     protected abstract void init(T t);
 
-    /**
-     * 销毁方法
-     */
-    protected abstract void destroy();
 }

@@ -1,7 +1,8 @@
 package com.github.mrlawrenc.attach;
 
-import com.github.mrlawrenc.attach.util.StackBinaryTree;
+import com.github.mrlawrenc.attach.util.StackNode;
 
+import java.util.Arrays;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.ExecutorService;
@@ -17,7 +18,7 @@ import java.util.concurrent.Future;
 public class TestStack {
     static InheritableThreadLocal<Integer> inheritableThreadLocal = new InheritableThreadLocal<>();
 
-    static InheritableThreadLocal<StackBinaryTree> testLocal = new InheritableThreadLocal<>();
+    static InheritableThreadLocal<StackNode> testLocal = new InheritableThreadLocal<>();
 
     static ThreadLocal<Integer> threadLocal = new ThreadLocal<>();
     private String testSet;
@@ -53,6 +54,11 @@ public class TestStack {
 
     }
 
+    private static class MySecurityManager extends SecurityManager {
+        public Class<?>[] m() {
+            return super.getClassContext();
+        }
+    }
 
     public void t1() {
         new TestStack().setTestSet("测试set方法是否存在堆栈信息");
@@ -67,6 +73,7 @@ public class TestStack {
     public void t3() {
         t4();
     }
+
     public void t5() {
     }
 
@@ -74,14 +81,16 @@ public class TestStack {
         System.out.println("Thread:" + Thread.currentThread().getName());
         System.out.println("threadLocal:" + threadLocal.get());
         Integer integer = inheritableThreadLocal.get();
-        if (Objects.nonNull(integer)){
-            inheritableThreadLocal.set(integer+1);
+        if (Objects.nonNull(integer)) {
+            inheritableThreadLocal.set(integer + 1);
         }
-        System.out.println("current stack:"+Thread.currentThread().getStackTrace()[1]);
+        System.out.println("current stack:" + Thread.currentThread().getStackTrace()[1]);
         System.out.println("inheritableThreadLocal:" + inheritableThreadLocal.get());
         for (StackTraceElement stackTraceElement : Thread.currentThread().getStackTrace()) {
-            System.out.println(stackTraceElement);
+            System.out.println(stackTraceElement.getLineNumber() + " " + stackTraceElement);
         }
+
+        System.out.println("#########:" + Arrays.toString(new MySecurityManager().m()).replaceAll(",", "\n"));
 
         Map<Thread, StackTraceElement[]> allStackTraces = Thread.getAllStackTraces();
     }

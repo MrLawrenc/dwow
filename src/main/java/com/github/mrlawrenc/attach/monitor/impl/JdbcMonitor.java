@@ -5,6 +5,7 @@ import com.github.mrlawrenc.attach.monitor.MethodInfo;
 import com.github.mrlawrenc.attach.statistics.JdbcStatistics;
 import com.github.mrlawrenc.attach.statistics.Statistics;
 import com.github.mrlawrenc.attach.util.ThreadLocalUtil;
+import com.github.mrlawrenc.attach.write.Writeable;
 import com.github.mrlawrenc.attach.write.WriterResp;
 import javassist.ClassPool;
 import javassist.CtClass;
@@ -159,20 +160,20 @@ public class JdbcMonitor extends AbstractMonitor {
         current.setEndTime(System.currentTimeMillis());
         log.info("statistics:{}", current);
 
-        log.info("##############################打印堆栈信息##############################");
+/*        log.info("##############################打印堆栈信息##############################");
         for (StackTraceElement traceElement : Thread.currentThread().getStackTrace()) {
             String className = traceElement.getClassName();
             int lineNumber = traceElement.getLineNumber();
             String methodName = traceElement.getMethodName();
             log.info("{}: {}#{}", lineNumber, className, methodName);
         }
-        log.info("##############################打印堆栈信息##############################");
+        log.info("##############################打印堆栈信息##############################");*/
         return result;
     }
 
 
     @Override
-    public WriterResp write(Statistics statistics) {
+    public WriterResp write(Writeable statistics) {
         return null;
     }
 }

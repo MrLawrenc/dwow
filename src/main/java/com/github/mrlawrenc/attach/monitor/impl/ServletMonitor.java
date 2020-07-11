@@ -4,7 +4,7 @@ import com.github.mrlawrenc.attach.monitor.AbstractMonitor;
 import com.github.mrlawrenc.attach.monitor.MethodInfo;
 import com.github.mrlawrenc.attach.statistics.ServletStatistics;
 import com.github.mrlawrenc.attach.statistics.Statistics;
-import com.github.mrlawrenc.attach.util.StackBinaryTree;
+import com.github.mrlawrenc.attach.util.StackNode;
 import com.github.mrlawrenc.attach.util.ThreadLocalUtil;
 import com.github.mrlawrenc.attach.write.Writeable;
 import com.github.mrlawrenc.attach.write.WriterResp;
@@ -53,17 +53,18 @@ public class ServletMonitor extends AbstractMonitor {
 
     @Override
     public Statistics begin(Object obj, Object... args) {
-        StackBinaryTree stackBinaryTree = ThreadLocalUtil.globalThreadLocal.get();
-        if (Objects.nonNull(stackBinaryTree)) {
+        StackNode stackNode = ThreadLocalUtil.globalThreadLocal.get();
+        if (Objects.nonNull(stackNode)) {
             //证明该线程复用了，也意味着上一次代码调用堆栈已经统计完成，需要保存当前stack
 
-            int newValue = stackBinaryTree.getCurrentThreadFlag().incrementAndGet();
-            ThreadLocalUtil.globalThreadLocal.set(new StackBinaryTree(newValue,stackBinaryTree));
+            int newValue = stackNode.getCurrentThreadFlag().incrementAndGet();
+            ThreadLocalUtil.globalThreadLocal.set(new StackNode(newValue, stackNode));
             log.info("stackBinaryTree parent value update -> {}", newValue);
         } else {
-            ThreadLocalUtil.globalThreadLocal.set(new StackBinaryTree());
+            ThreadLocalUtil.globalThreadLocal.set(new StackNode());
         }
-        System.out.println(Thread.currentThread().getName() + " servlet 获取local值:" + ThreadLocalUtil.globalThreadLocal.get());
+
+
         ServletStatistics statistics = new ServletStatistics("0");
         HttpServletRequest servletRequest = (HttpServletRequest) args[0];
         HttpServletResponse servletResponse = (HttpServletResponse) args[1];
@@ -84,7 +85,6 @@ public class ServletMonitor extends AbstractMonitor {
     public Object end(Statistics current, Object obj) {
         current.setEndTime(System.currentTimeMillis());
         log.info("servlet cost time:" + (current.getEndTime() - current.getStartTime()));
-        System.out.println(Thread.currentThread().getName() + " servlet 获取local值:" + ThreadLocalUtil.globalThreadLocal.get());
         return obj;
     }
 

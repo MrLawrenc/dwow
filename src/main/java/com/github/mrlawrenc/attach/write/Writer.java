@@ -15,4 +15,9 @@ public interface Writer {
      * @return 输出结果
      */
     WriterResp write(Writeable writeable);
+
+    /**
+     * 销毁方法
+     */
+    void destroy();
 }

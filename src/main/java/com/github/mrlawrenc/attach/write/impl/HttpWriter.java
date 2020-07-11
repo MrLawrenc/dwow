@@ -41,7 +41,7 @@ public class HttpWriter extends AbstractWriter<String> {
     }
 
     @Override
-    protected void destroy() {
+    public void destroy() {
         connection.disconnect();
     }
 
