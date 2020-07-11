@@ -6,6 +6,7 @@ import com.github.mrlawrenc.attach.statistics.ServletStatistics;
 import com.github.mrlawrenc.attach.statistics.Statistics;
 import com.github.mrlawrenc.attach.util.StackBinaryTree;
 import com.github.mrlawrenc.attach.util.ThreadLocalUtil;
+import com.github.mrlawrenc.attach.write.Writeable;
 import com.github.mrlawrenc.attach.write.WriterResp;
 import javassist.ClassPool;
 import javassist.CtClass;
@@ -88,7 +89,7 @@ public class ServletMonitor extends AbstractMonitor {
     }
 
     @Override
-    public WriterResp write(Statistics statistics) {
+    public WriterResp write(Writeable statistics) {
         return null;
     }
 }

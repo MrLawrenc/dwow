@@ -1,10 +1,15 @@
 package com.github.mrlawrenc.attach.util;
 
 import com.github.mrlawrenc.attach.write.Writeable;
+import com.github.mrlawrenc.attach.write.WriterResp;
 import com.github.mrlawrenc.attach.write.impl.FileWriter;
 import lombok.Data;
 
+import java.io.FileNotFoundException;
+import java.io.IOException;
+import java.io.RandomAccessFile;
 import java.util.Arrays;
+import java.util.Objects;
 import java.util.concurrent.atomic.AtomicInteger;
 
 /**
@@ -13,7 +18,7 @@ import java.util.concurrent.atomic.AtomicInteger;
  * 堆栈二叉树
  */
 @Data
-public class StackBinaryTree implements Writeable {
+public class StackBinaryTree extends FileWriter implements Writeable {
     /**
      * 线程标识，若处在线程池循环中，则会在插桩处更新该标识
      */
@@ -37,6 +42,29 @@ public class StackBinaryTree implements Writeable {
         for (StackTraceElement stackTraceElement : oldTree.getStackTraceElements()) {
             System.out.println(stackTraceElement.getLineNumber() + "===》" + stackTraceElement.getClassName() + "#" + stackTraceElement.getMethodName() + "  " + stackTraceElement.getFileName());
         }
+    }
+
+    private RandomAccessFile rw = null;
+    private int off;
+
+    @Override
+    public WriterResp write(Writeable writeable) {
+        if (Objects.isNull(rw)){
+            try {
+                rw = new RandomAccessFile("/stack.txt", "rw");
+            } catch (FileNotFoundException e) {
+                e.printStackTrace();
+            }
+        }
+
+        byte[] bytes = "".getBytes();
+        try {
+            rw.write(bytes,off,bytes.length);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
+        return null;
     }
 
     private static class Node {
