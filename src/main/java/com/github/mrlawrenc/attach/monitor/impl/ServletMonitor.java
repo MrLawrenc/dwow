@@ -16,7 +16,6 @@ import lombok.extern.slf4j.Slf4j;
 
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
-import java.util.Objects;
 
 /**
  * @author : MrLawrenc
@@ -53,16 +52,7 @@ public class ServletMonitor extends AbstractMonitor {
 
     @Override
     public Statistics begin(Object obj, Object... args) {
-        StackNode stackNode = ThreadLocalUtil.globalThreadLocal.get();
-        if (Objects.nonNull(stackNode)) {
-            //证明该线程复用了，也意味着上一次代码调用堆栈已经统计完成，需要保存当前stack
-
-            int newValue = stackNode.getCurrentThreadFlag().incrementAndGet();
-            ThreadLocalUtil.globalThreadLocal.set(new StackNode(newValue, stackNode));
-            log.info("stackBinaryTree parent value update -> {}", newValue);
-        } else {
-            ThreadLocalUtil.globalThreadLocal.set(new StackNode());
-        }
+        ThreadLocalUtil.globalThreadLocal.set(new StackNode());
 
 
         ServletStatistics statistics = new ServletStatistics("0");

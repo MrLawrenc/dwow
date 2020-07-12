@@ -2,13 +2,12 @@ package com.github.mrlawrenc.attach.util;
 
 import com.github.mrlawrenc.attach.write.Writeable;
 import lombok.Data;
+import lombok.extern.slf4j.Slf4j;
 
-import java.io.RandomAccessFile;
 import java.io.Serializable;
 import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
+import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 
 /**
@@ -17,13 +16,35 @@ import java.util.concurrent.atomic.AtomicInteger;
  * 堆栈二叉树
  */
 @Data
+@Slf4j
 public class StackNode implements Writeable {
     /**
-     * 线程标识，若处在线程池循环中，则会在插桩处更新该标识
+     * 每次流程唯一标识
+     */
+    private String id;
+    /**
+     * 线程唯一标识，若处在线程池循环中，则会在插桩处更新该标识，该标识会传递给子线程
      */
     private final AtomicInteger currentThreadFlag = new AtomicInteger(Integer.MIN_VALUE);
 
-    private StackTraceElement[] currentStackElements;
+
+    /**
+     * 存储每一次流程堆栈
+     */
+    private static final Map<String, StackNode> ALL_NODE = new ConcurrentHashMap<>();
+    /**
+     * 某一次堆栈流程的信息
+     */
+    private List<Node> nodeChain;
+
+    public StackNode() {
+        this.id = GlobalUtil.getId();
+        ALL_NODE.put(this.id, this);
+        this.nodeChain = Collections.synchronizedList(new ArrayList<>());
+        // 0为当前方法 ； 1为实例化处，通常在monitor实现类 ； 2才是真的的调用处
+        Node parentNode = new Node(null, 1).createStackInfo(new Throwable().getStackTrace()[2]);
+        this.nodeChain.add(parentNode);
+    }
 
     /**
      * 会被注入字节码的类调用
@@ -33,7 +54,7 @@ public class StackNode implements Writeable {
     @Deprecated
     public void addNode(StackTraceElement[] stackTraceElement) {
         System.out.println("====>" + Arrays.toString(stackTraceElement));
-        this.currentStackElements = stackTraceElement;
+        StackTraceElement[] currentStackElements = stackTraceElement;
         GlobalUtil.write(this);
     }
 
@@ -41,31 +62,27 @@ public class StackNode implements Writeable {
      * 会在被注入字节码的类中调用，用于统计堆栈信息
      */
     public void addNode() {
-        this.currentStackElements = Thread.currentThread().getStackTrace();
+        if (true) {
+            long parentId = this.nodeChain.get(this.nodeChain.size() - 1).getId();
+            Node parentNode = new Node(parentId, parentId * 10 + 1).createStackInfo(new Throwable().getStackTrace()[1]);
+            this.nodeChain.add(parentNode);
+            System.out.println("====================");
+            for (Node node : this.nodeChain) {
+                System.out.println(node);
+            }
+            System.out.println("====================");
+        }
+
+        StackTraceElement[] currentStackElements = Thread.currentThread().getStackTrace();
         GlobalUtil.write(this);
     }
-
-    public StackNode() {
-        currentThreadFlag.set(0);
-    }
-
-    public StackNode(int newValue, StackNode oldTree) {
-
-      /*  currentThreadFlag.set(newValue);
-        for (StackTraceElement stackTraceElement : oldTree.getStackTraceElements()) {
-            System.out.println(stackTraceElement.getLineNumber() + "===》" + stackTraceElement.getClassName() + "#" + stackTraceElement.getMethodName() + "  " + stackTraceElement.getFileName());
-        }*/
-    }
-
-    private RandomAccessFile rw = null;
-    private int off;
-
 
     /**
      * 堆栈信息节点
      */
     @Data
     public static class Node implements Serializable {
+
         private String className;
         private String methodName;
         private String fileName;
@@ -82,9 +99,26 @@ public class StackNode implements Writeable {
             this.id = id;
         }
 
-        public void createStackInfo(StackTraceElement element) {
+        public Node createStackInfo(StackTraceElement element) {
             this.stackInfo = LocalDateTime.now() + " " + Thread.currentThread().getName() + " " +
                     element.getLineNumber() + " " + element.getClassName() + "#" + element.getMethodName() + "  " + element.getFileName() + "\n";
+            return this;
+        }
+
+
+        /**
+         * 以当前node顶层节点，打印出当前node的树形结构
+         */
+        public void printNodeTreeByParent() {
+            printNodeTree(this, GlobalUtil.EMPTY_STR);
+        }
+
+        private void printNodeTree(StackNode.Node parentNode, String str) {
+            System.out.println(str + parentNode.getStackInfo());
+            List<StackNode.Node> child = parentNode.getChild();
+            if (Objects.nonNull(child) && child.size() > 0) {
+                child.forEach(c -> printNodeTree(c, str + GlobalUtil.TABS));
+            }
         }
 
         public static void main(String[] args) {
@@ -113,13 +147,13 @@ public class StackNode implements Writeable {
             List<Node> child2 = new ArrayList<>();
             Node node1 = node.getChild().get(node.getChild().size() - 1);
             for (int i = 0; i < 2; i++) {
-                Node node2 = new Node(node.getParentId(), node1.getId() + i+1);
+                Node node2 = new Node(node.getParentId(), node1.getId() + i + 1);
                 node2.setStackInfo("我是一级子节点" + node2.getId());
                 child2.add(node2);
             }
             node.getChild().addAll(child2);
 
-            GlobalUtil.printNodeTreeByParent(node);
+            node.printNodeTreeByParent();
         }
     }
 

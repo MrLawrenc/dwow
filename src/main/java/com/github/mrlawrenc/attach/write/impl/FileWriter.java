@@ -1,6 +1,5 @@
 package com.github.mrlawrenc.attach.write.impl;
 
-import com.github.mrlawrenc.attach.util.StackNode;
 import com.github.mrlawrenc.attach.write.AbstractWriter;
 import com.github.mrlawrenc.attach.write.Writeable;
 import com.github.mrlawrenc.attach.write.WriterResp;
@@ -10,7 +9,6 @@ import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.RandomAccessFile;
-import java.time.LocalDateTime;
 
 /**
  * @author : MrLawrenc
@@ -55,7 +53,7 @@ public class FileWriter extends AbstractWriter<String> {
 
     @Override
     public synchronized WriterResp write(Writeable writeable) {
-        if (writeable instanceof StackNode) {
+      /*  if (writeable instanceof StackNode) {
             StackNode source = (StackNode) writeable;
             StackTraceElement[] stackTraceElements = source.getCurrentStackElements();
 
@@ -89,7 +87,7 @@ public class FileWriter extends AbstractWriter<String> {
             } catch (IOException e) {
                 e.printStackTrace();
             }
-        }
+        }*/
 
         return null;
     }

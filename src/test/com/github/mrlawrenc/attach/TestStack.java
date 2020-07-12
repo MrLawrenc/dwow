@@ -28,6 +28,7 @@ public class TestStack {
     }
 
     public static void main(String[] args) throws Exception {
+        int lineNumber = new Throwable().getStackTrace()[0].getLineNumber();
         //普通堆栈获取
         inheritableThreadLocal.set(1);
         threadLocal.set(1);
