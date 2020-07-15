@@ -13,7 +13,8 @@ import lombok.ToString;
  */
 @EqualsAndHashCode(callSuper = true)
 @Getter
-@Setter@ToString
+@Setter
+@ToString(callSuper = true)
 public class ServletStatistics extends Statistics {
 
     public ServletStatistics(String idx) {

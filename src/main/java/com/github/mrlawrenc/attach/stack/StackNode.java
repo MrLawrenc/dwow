@@ -1,14 +1,17 @@
-package com.github.mrlawrenc.attach.util;
+package com.github.mrlawrenc.attach.stack;
 
+import com.github.mrlawrenc.attach.util.Collector;
+import com.github.mrlawrenc.attach.util.GlobalUtil;
+import com.github.mrlawrenc.attach.util.ThreadLocalUtil;
 import com.github.mrlawrenc.attach.write.Writeable;
 import lombok.Data;
 import lombok.extern.slf4j.Slf4j;
 
 import java.io.Serializable;
 import java.time.LocalDateTime;
-import java.util.*;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.atomic.AtomicInteger;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Objects;
 
 /**
  * @author MrLawrenc
@@ -18,32 +21,34 @@ import java.util.concurrent.atomic.AtomicInteger;
 @Data
 @Slf4j
 public class StackNode implements Writeable {
+
     /**
      * 每次流程唯一标识
      */
     private String id;
-    /**
-     * 线程唯一标识，若处在线程池循环中，则会在插桩处更新该标识，该标识会传递给子线程
-     */
-    private final AtomicInteger currentThreadFlag = new AtomicInteger(Integer.MIN_VALUE);
 
 
     /**
-     * 存储每一次流程堆栈
+     * 若进入if逻辑，则代表该线程是线程池复用的线程
      */
-    private static final Map<String, StackNode> ALL_NODE = new ConcurrentHashMap<>();
-    /**
-     * 某一次堆栈流程的信息
-     */
-    private List<Node> nodeChain;
-
     public StackNode() {
+        if (Objects.nonNull(ThreadLocalUtil.globalThreadLocal.get())) {
+            Collector.updateNodeTree();
+            log.info("parent node size:" + Collector.NODE_TREE_LIST.size());
+            //输出当前总链信息
+            Collector.NODE_TREE_LIST.forEach(Node::printNodeTreeByParent);
+
+            String key = ThreadLocalUtil.globalThreadLocal.get().getId();
+            //ALL_NODE.remove(key);
+            log.info("thread({}) reuse,remove nodeChain({}).", Thread.currentThread().getName(), key);
+        }
+
         this.id = GlobalUtil.getId();
-        ALL_NODE.put(this.id, this);
-        this.nodeChain = Collections.synchronizedList(new ArrayList<>());
         // 0为当前方法 ； 1为实例化处，通常在monitor实现类 ； 2才是真的的调用处
         Node parentNode = new Node(null, 1).createStackInfo(new Throwable().getStackTrace()[2]);
-        this.nodeChain.add(parentNode);
+        Collector.addNode(id, parentNode);
+        log.info("{} new flow start. add new parentNode {}", Thread.currentThread().getName(), parentNode);
+
     }
 
     /**
@@ -53,28 +58,42 @@ public class StackNode implements Writeable {
      */
     @Deprecated
     public void addNode(StackTraceElement[] stackTraceElement) {
-        System.out.println("====>" + Arrays.toString(stackTraceElement));
-        StackTraceElement[] currentStackElements = stackTraceElement;
-        GlobalUtil.write(this);
+
     }
 
     /**
      * 会在被注入字节码的类中调用，用于统计堆栈信息
      */
     public void addNode() {
-        if (true) {
-            long parentId = this.nodeChain.get(this.nodeChain.size() - 1).getId();
-            Node parentNode = new Node(parentId, parentId * 10 + 1).createStackInfo(new Throwable().getStackTrace()[1]);
-            this.nodeChain.add(parentNode);
-            System.out.println("====================");
-            for (Node node : this.nodeChain) {
-                System.out.println(node);
+        String id = ThreadLocalUtil.globalThreadLocal.get().getId();
+        List<Node> currentNodeChain = Collector.getContainer(id).getNodeList();
+        long parentId = currentNodeChain.get(currentNodeChain.size() - 1).getId();
+        Node node = new Node(parentId, parentId * 10 + 1).createStackInfo(new Throwable().getStackTrace()[1]);
+        currentNodeChain.add(node);
+    }
+
+
+    /**
+     * 根据当前节点找到tree中匹配的顶层节点
+     *
+     * @param node 当前节点
+     * @return tree的顶层节点
+     */
+    private Node findParentNode(Node node) {
+        int idx = -1;
+        for (int i = 0; i < Collector.NODE_TREE_LIST.size(); i++) {
+            Node pNode = Collector.NODE_TREE_LIST.get(i);
+            if (pNode.className.equals(node.getClassName()) && pNode.methodName.equals(node.methodName)
+                    && pNode.getLineNum() == node.getLineNum()) {
+                idx = i;
             }
-            System.out.println("====================");
         }
 
-        StackTraceElement[] currentStackElements = Thread.currentThread().getStackTrace();
-        GlobalUtil.write(this);
+        if (idx == -1) {
+            Collector.NODE_TREE_LIST.add(node);
+            return node;
+        }
+        return Collector.NODE_TREE_LIST.get(idx);
     }
 
     /**
@@ -100,8 +119,13 @@ public class StackNode implements Writeable {
         }
 
         public Node createStackInfo(StackTraceElement element) {
+            this.methodName = element.getMethodName();
+            this.lineNum = element.getLineNumber();
+            this.className = element.getClassName();
+            this.fileName = element.getFileName();
+
             this.stackInfo = LocalDateTime.now() + " " + Thread.currentThread().getName() + " " +
-                    element.getLineNumber() + " " + element.getClassName() + "#" + element.getMethodName() + "  " + element.getFileName() + "\n";
+                    this.lineNum + " " + this.className + "#" + this.methodName + "  " + this.fileName;
             return this;
         }
 
@@ -120,6 +144,7 @@ public class StackNode implements Writeable {
                 child.forEach(c -> printNodeTree(c, str + GlobalUtil.TABS));
             }
         }
+
 
         public static void main(String[] args) {
             Node node = new Node(null, 1);

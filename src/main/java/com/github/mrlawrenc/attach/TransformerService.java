@@ -5,7 +5,7 @@ import com.github.mrlawrenc.attach.monitor.MethodInfo;
 import com.github.mrlawrenc.attach.monitor.Monitor;
 import com.github.mrlawrenc.attach.monitor.impl.JdbcMonitor;
 import com.github.mrlawrenc.attach.monitor.impl.ServletMonitor;
-import com.github.mrlawrenc.attach.util.StackNode;
+import com.github.mrlawrenc.attach.stack.StackNode;
 import com.github.mrlawrenc.attach.util.ThreadLocalUtil;
 import javassist.*;
 import lombok.SneakyThrows;

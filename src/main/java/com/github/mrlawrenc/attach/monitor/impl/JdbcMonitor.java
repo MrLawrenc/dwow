@@ -1,10 +1,11 @@
 package com.github.mrlawrenc.attach.monitor.impl;
 
+import com.github.mrlawrenc.attach.StatisticsType;
 import com.github.mrlawrenc.attach.monitor.AbstractMonitor;
 import com.github.mrlawrenc.attach.monitor.MethodInfo;
 import com.github.mrlawrenc.attach.statistics.JdbcStatistics;
 import com.github.mrlawrenc.attach.statistics.Statistics;
-import com.github.mrlawrenc.attach.util.ThreadLocalUtil;
+import com.github.mrlawrenc.attach.util.GlobalUtil;
 import com.github.mrlawrenc.attach.write.Writeable;
 import com.github.mrlawrenc.attach.write.WriterResp;
 import javassist.ClassPool;
@@ -62,6 +63,11 @@ public class JdbcMonitor extends AbstractMonitor {
         JdbcMonitor.INSTANCE = this;
     }
 
+    @Override
+    public StatisticsType type() {
+        return StatisticsType.JDBC;
+    }
+
     /**
      * 生成connection代理对象
      *
@@ -72,14 +78,19 @@ public class JdbcMonitor extends AbstractMonitor {
         return (Connection) Proxy.newProxyInstance(JdbcMonitor.class.getClassLoader(), new Class[]{Connection.class}, new InvocationHandler() {
             @Override
             public Object invoke(Object proxy, Method method, Object[] args) throws Throwable {
+                JdbcStatistics statistics = null;
+                if (Arrays.asList(PROXY_CONNECTION_METHOD).contains(method.getName())) {
+                    statistics = GlobalUtil.createStatistics(JdbcStatistics.class);
+                    statistics.setStartTime(System.currentTimeMillis());
+                }
+
                 Object result = method.invoke(connection, args);
                 if (Arrays.asList(PROXY_CONNECTION_METHOD).contains(method.getName()) && result instanceof PreparedStatement) {
-                    String s = ThreadLocalUtil.get();
-                    JdbcStatistics statistics = new JdbcStatistics(s+"0");
-                    statistics.setUrl(connection.getMetaData().getURL());
-                    statistics.setSql(args[0].toString());
-                    System.out.println(statistics);
-                    result = proxyStatement((PreparedStatement) result);
+                    if (Objects.nonNull(statistics)) {
+                        statistics.setUrl(connection.getMetaData().getURL());
+                        statistics.setSql(args[0].toString());
+                    }
+                    result = proxyStatement((PreparedStatement) result, statistics);
                 }
                 return result;
             }
@@ -92,17 +103,22 @@ public class JdbcMonitor extends AbstractMonitor {
      * @param statement connection对象执行prepareStatement方法返回结果
      * @return 代理connection#prepareStatement()结果对象
      */
-    private PreparedStatement proxyStatement(PreparedStatement statement) {
+    private PreparedStatement proxyStatement(PreparedStatement statement, JdbcStatistics statistics) {
         return (PreparedStatement) Proxy.newProxyInstance(JdbcMonitor.class.getClassLoader()
                 , new Class[]{PreparedStatement.class}, (proxy, method, args) -> {
                     Object result = method.invoke(statement, args);
-                    //System.out.println("方法名:" + method.getName() + "参数:" + args + " 结果:" + result);
                     if (Arrays.asList(STATEMENT_METHOD).contains(method.getName())) {
-
-                        JdbcStatistics statistics = new JdbcStatistics(ThreadLocalUtil.get()+"0");
-                        System.out.println("method name:"+method.getName());
+                        System.out.println("method name:" + method.getName());
+                        statistics.setEndTime(System.currentTimeMillis());
                         if (result instanceof ResultSet) {
-                            statistics.setResultSet((ResultSet) result);
+                            ResultSet resultSet = (ResultSet) result;
+                            statistics.setResultSet(resultSet);
+
+                            //设置行数 完毕归位结果集指针
+                            resultSet.last();
+                            statistics.setCount(resultSet.getRow());
+                            resultSet.beforeFirst();
+
                         } else if (result instanceof Integer || result instanceof Long) {
                             statistics.setCount((Long) result);
                         } else if (result instanceof Boolean) {
@@ -138,7 +154,7 @@ public class JdbcMonitor extends AbstractMonitor {
 
     @Override
     public Statistics begin(Object obj, Object... args) {
-        Statistics statistics = new JdbcStatistics("0");
+        Statistics statistics = GlobalUtil.createStatistics(JdbcStatistics.class);
         log.info("begin class:{} args:{}", obj.getClass(), args);
         statistics.setStartTime(System.currentTimeMillis());
         return statistics;

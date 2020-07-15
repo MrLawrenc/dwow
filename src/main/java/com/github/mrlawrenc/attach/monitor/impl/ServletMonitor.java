@@ -1,10 +1,12 @@
 package com.github.mrlawrenc.attach.monitor.impl;
 
+import com.github.mrlawrenc.attach.StatisticsType;
 import com.github.mrlawrenc.attach.monitor.AbstractMonitor;
 import com.github.mrlawrenc.attach.monitor.MethodInfo;
+import com.github.mrlawrenc.attach.stack.StackNode;
 import com.github.mrlawrenc.attach.statistics.ServletStatistics;
 import com.github.mrlawrenc.attach.statistics.Statistics;
-import com.github.mrlawrenc.attach.util.StackNode;
+import com.github.mrlawrenc.attach.util.GlobalUtil;
 import com.github.mrlawrenc.attach.util.ThreadLocalUtil;
 import com.github.mrlawrenc.attach.write.Writeable;
 import com.github.mrlawrenc.attach.write.WriterResp;
@@ -51,11 +53,15 @@ public class ServletMonitor extends AbstractMonitor {
     }
 
     @Override
+    public StatisticsType type() {
+        return StatisticsType.SERVLET;
+    }
+
+    @Override
     public Statistics begin(Object obj, Object... args) {
         ThreadLocalUtil.globalThreadLocal.set(new StackNode());
 
-
-        ServletStatistics statistics = new ServletStatistics("0");
+        ServletStatistics statistics = GlobalUtil.createStatistics(ServletStatistics.class);
         HttpServletRequest servletRequest = (HttpServletRequest) args[0];
         HttpServletResponse servletResponse = (HttpServletResponse) args[1];
         StringBuffer url = servletRequest.getRequestURL();

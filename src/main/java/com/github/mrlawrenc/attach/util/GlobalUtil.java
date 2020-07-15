@@ -1,9 +1,12 @@
 package com.github.mrlawrenc.attach.util;
 
+import com.github.mrlawrenc.attach.statistics.Statistics;
 import com.github.mrlawrenc.attach.write.Writeable;
 import com.github.mrlawrenc.attach.write.Writer;
 import com.github.mrlawrenc.attach.write.impl.FileWriter;
 
+import java.lang.reflect.Constructor;
+import java.util.Objects;
 import java.util.concurrent.atomic.AtomicInteger;
 
 /**
@@ -34,7 +37,33 @@ public class GlobalUtil {
      */
     private final static AtomicInteger CURRENT_THREAD_FLAG = new AtomicInteger(Integer.MIN_VALUE);
 
+    /**
+     * 获取全局唯一id
+     *
+     * @return id
+     */
     public static String getId() {
         return CURRENT_THREAD_FLAG.incrementAndGet() + "#" + System.currentTimeMillis();
+    }
+
+
+    /**
+     * 创建统计类
+     */
+    public static <T extends Statistics> T createStatistics(Class<T> statisticsClass) {
+        T statistics;
+        try {
+            Constructor<T> constructor = statisticsClass.getDeclaredConstructor(String.class);
+            constructor.setAccessible(true);
+            if (Objects.isNull(ThreadLocalUtil.globalThreadLocal.get())) {
+                statistics = constructor.newInstance(GlobalUtil.getId());
+            } else {
+                statistics = constructor.newInstance(ThreadLocalUtil.globalThreadLocal.get().getId());
+            }
+        } catch (Exception e) {
+            throw new RuntimeException("init statistics " + statisticsClass + " fail!");
+        }
+        Collector.addStatistics(statistics);
+        return statistics;
     }
 }

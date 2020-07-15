@@ -1,14 +1,13 @@
 package com.github.mrlawrenc.attach.statistics;
 
 import com.github.mrlawrenc.attach.monitor.Monitor;
-import com.github.mrlawrenc.attach.util.ThreadLocalUtil;
 import com.github.mrlawrenc.attach.write.Writeable;
+import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.ToString;
 
 import java.io.Serializable;
-import java.util.Objects;
 
 /**
  * @author MrLawrenc
@@ -22,21 +21,13 @@ import java.util.Objects;
 public abstract class Statistics implements Serializable, Writeable {
 
     /**
-     * 获取当前统计类索引信息
-     * <p>
-     * 每一条堆栈由多个统计类构成，且多个统计类会构成一个二叉树单分支
-     * <p>
-     * 索引值 如0 01 011 012 0121等
+     * 全局唯一，当当前线程存在StackNode时，会使用其id
      */
-    protected String idx;
+    protected String id;
 
-    public Statistics(String idx) {
-        String currentIdx = ThreadLocalUtil.get();
-        if (Objects.nonNull(currentIdx)) {
-            currentIdx += "0";
-            ThreadLocalUtil.set(currentIdx);
-        }
-        this.idx = idx;
+
+    public Statistics(String id) {
+        this.id = id;
     }
 
     /**
@@ -70,6 +61,16 @@ public abstract class Statistics implements Serializable, Writeable {
     /**
      * 方法执行结束时间
      */
+    @Setter(AccessLevel.NONE)
     private long endTime;
 
+    /**
+     * 花费时间 ms
+     */
+    private long cosTime;
+
+    public void setEndTime(long endTime) {
+        this.endTime = endTime;
+        this.cosTime = this.endTime - this.startTime;
+    }
 }

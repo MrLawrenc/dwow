@@ -3,6 +3,8 @@ package com.github.mrlawrenc.attach.statistics;
 import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import lombok.Setter;
+import lombok.ToString;
+import lombok.experimental.Accessors;
 
 import java.sql.ResultSet;
 
@@ -13,11 +15,15 @@ import java.sql.ResultSet;
  * Jdbc收集器
  */
 @EqualsAndHashCode(callSuper = true)
-@Getter@Setter
+@Getter
+@Setter
+@ToString(callSuper = true)
+@Accessors(chain = true)
 public class JdbcStatistics extends Statistics {
-    public JdbcStatistics(String idx) {
-        super(idx);
+    private JdbcStatistics(String id) {
+        super(id);
     }
+
     /**
      * 连接信息
      */
@@ -41,15 +47,4 @@ public class JdbcStatistics extends Statistics {
      */
     private boolean success;
 
-    @Override
-    public String toString() {
-        return "JdbcStatistics{" +
-                "url='" + url + '\'' +
-                ", sql='" + sql + '\'' +
-                ", resultSet=" + resultSet +
-                ", count=" + count +
-                ", success=" + success +
-                ", idx='" + idx + '\'' +
-                '}';
-    }
 }

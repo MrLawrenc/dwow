@@ -1,6 +1,6 @@
 package com.github.mrlawrenc.attach;
 
-import com.github.mrlawrenc.attach.util.StackNode;
+import com.github.mrlawrenc.attach.stack.StackNode;
 
 import java.util.Arrays;
 import java.util.Map;
