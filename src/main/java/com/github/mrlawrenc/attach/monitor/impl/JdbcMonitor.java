@@ -175,15 +175,6 @@ public class JdbcMonitor extends AbstractMonitor {
         }
         current.setEndTime(System.currentTimeMillis());
         log.info("statistics:{}", current);
-
-/*        log.info("##############################打印堆栈信息##############################");
-        for (StackTraceElement traceElement : Thread.currentThread().getStackTrace()) {
-            String className = traceElement.getClassName();
-            int lineNumber = traceElement.getLineNumber();
-            String methodName = traceElement.getMethodName();
-            log.info("{}: {}#{}", lineNumber, className, methodName);
-        }
-        log.info("##############################打印堆栈信息##############################");*/
         return result;
     }
 

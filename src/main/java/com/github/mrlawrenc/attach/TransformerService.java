@@ -35,11 +35,11 @@ public class TransformerService implements ClassFileTransformer {
     /**
      * 需要统计堆栈数据的包
      */
-    private static final List<String> STACK_BASE_PKG = Arrays.asList("com.huize");
+    private static final List<String> STACK_BASE_PKG = Arrays.asList("com.huize","com.swust","com.github.mrlarence");
     /**
      * 统计堆栈数据时需要排除的包
      */
-    private static final List<String> STACK_EXCLUDE_PKG = Arrays.asList("java", "sun");
+    private static final List<String> STACK_EXCLUDE_PKG = Arrays.asList("java", "sun","org");
     /**
      * 统计堆栈数据时需要排除的方法
      */

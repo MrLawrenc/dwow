@@ -28,7 +28,11 @@ public class ServletStatistics extends Statistics {
     /**
      * 请求方式，如post get
      */
-    private String type;
+    private String method;
 
+    private String reqParam;
 
+    public enum ReqType {
+        POST(), GET();
+    }
 }
