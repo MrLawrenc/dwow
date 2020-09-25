@@ -43,7 +43,7 @@ public class TransformerService implements ClassFileTransformer {
     /**
      * 统计堆栈数据时需要排除的方法
      */
-    private static final List<String> STACK_EXCLUDE_METHOD = Arrays.asList("toString", "equals", "hashCode");
+    private static final List<String> STACK_EXCLUDE_METHOD = Arrays.asList("toString", "equals", "hashCode","wait","notify","clone");
     /**
      * 统计堆栈数据时 排除getter和setter方法
      */

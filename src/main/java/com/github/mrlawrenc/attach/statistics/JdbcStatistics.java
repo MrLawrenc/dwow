@@ -34,7 +34,7 @@ public class JdbcStatistics extends Statistics {
      */
     private String sql;
     /**
-     * sql查询结果
+     * sql查询结果 fix:销毁
      */
     private ResultSet resultSet;
 

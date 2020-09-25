@@ -30,7 +30,10 @@ public class ServletStatistics extends Statistics {
      */
     private String method;
 
-    private String reqParam;
+    private String urlData;
+    private String bodyData;
+
+    private int respStatus;
 
     public enum ReqType {
         POST(), GET();

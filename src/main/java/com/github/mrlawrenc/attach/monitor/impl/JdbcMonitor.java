@@ -1,5 +1,6 @@
 package com.github.mrlawrenc.attach.monitor.impl;
 
+import cn.hutool.json.JSONUtil;
 import com.github.mrlawrenc.attach.StatisticsType;
 import com.github.mrlawrenc.attach.monitor.AbstractMonitor;
 import com.github.mrlawrenc.attach.monitor.MethodInfo;
@@ -124,7 +125,7 @@ public class JdbcMonitor extends AbstractMonitor {
                         } else if (result instanceof Boolean) {
                             statistics.setSuccess((Boolean) result);
                         }
-                        System.out.println("statistics:" + statistics);
+                        log.info("preparedStatement statistics:{}", JSONUtil.toJsonStr(statistics));
                     }
                     return result;
                 });
@@ -174,7 +175,7 @@ public class JdbcMonitor extends AbstractMonitor {
             current.setNewResult(result);
         }
         current.setEndTime(System.currentTimeMillis());
-        log.info("statistics:{}", current);
+        log.info("statistics:{}", JSONUtil.toJsonStr(current));
         return result;
     }
 
