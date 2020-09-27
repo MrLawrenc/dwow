@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="ProjectModuleManager">
+    <modules>
+      <module fileurl="file://$PROJECT_DIR$/agent-boot/agent-boot.iml" filepath="$PROJECT_DIR$/agent-boot/agent-boot.iml" />
+      <module fileurl="file://$PROJECT_DIR$/agent-copy/agent-copy.iml" filepath="$PROJECT_DIR$/agent-copy/agent-copy.iml" />
+      <module fileurl="file://$PROJECT_DIR$/agent-core/agent-core.iml" filepath="$PROJECT_DIR$/agent-core/agent-core.iml" />
+      <module fileurl="file://$PROJECT_DIR$/java-agent-dwow.iml" filepath="$PROJECT_DIR$/java-agent-dwow.iml" />
+    </modules>
+  </component>
+</project>
