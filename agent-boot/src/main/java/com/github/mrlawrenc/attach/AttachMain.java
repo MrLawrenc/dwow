@@ -1,6 +1,11 @@
 package com.github.mrlawrenc.attach;
 
+import java.io.File;
+import java.lang.instrument.ClassFileTransformer;
 import java.lang.instrument.Instrumentation;
+import java.lang.reflect.Constructor;
+import java.net.URL;
+import java.util.Objects;
 
 /**
  * @author hz20035009-逍遥
@@ -27,8 +32,11 @@ import java.lang.instrument.Instrumentation;
 public class AttachMain {
 
     public static void premain(String agentOps, Instrumentation inst) {
+        // 0 首先加载第三方依赖包
+
+
         try {
-         /*   // 0 获取core包位置
+            // 0 获取core包位置
             String userHome = System.getProperty("user.home");
             File[] files = new File(userHome).listFiles((dir, name) -> name.startsWith("agent-core"));
             if (Objects.isNull(files) || files.length != 1) {
@@ -43,14 +51,24 @@ public class AttachMain {
             // 3
             Constructor<?> constructor = transFormer.getConstructor(ClassLoader.class);
             Object instance = constructor.newInstance(agentLoader);
-            // 4 参考Arthas 将需要注入的代码单独放在一个jar包，交由启动类加载器加载，这样在被插桩的代码里面就能找到该类
-            inst.appendToBootstrapClassLoaderSearch(new JarFile(new File("a")));
+            /*// 4 参考Arthas 将需要注入的代码单独放在一个jar包，交由启动类加载器加载，这样在被插桩的代码里面就能找到该类
+            inst.appendToBootstrapClassLoaderSearch(new JarFile(new File("a")));*/
 
             // 5
-            inst.addTransformer((ClassFileTransformer) instance, true);*/
+            inst.addTransformer((ClassFileTransformer) instance, true);
 
 
-            inst.addTransformer(new TransformerService(null));
+          /*  String userHome = System.getProperty("user.home");
+            File[] files = new File(userHome).listFiles((dir, name) -> name.startsWith("agent-external-lib"));
+            if (Objects.isNull(files) || files.length != 1) {
+                return;
+            }
+            System.out.println("load core:" + files[0].getName());
+            File agentJarFile = files[0];
+            final ClassLoader agentLoader = new OnionClassLoader(new URL[]{agentJarFile.toURI().toURL()});
+            // 2
+            Class<?> transFormer = agentLoader.loadClass("com.github.mrlawrenc.attach.TransformerService");*/
+
 
         } catch (Exception e) {
             e.printStackTrace();

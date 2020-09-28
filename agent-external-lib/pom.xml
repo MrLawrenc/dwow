@@ -8,16 +8,16 @@
         <version>1.0-RELEASE</version>
     </parent>
     <modelVersion>4.0.0</modelVersion>
+    <!--该模块只引入第三方依赖包-->
+    <artifactId>agent-external-lib</artifactId>
 
-    <artifactId>agent-core</artifactId>
-
-
-    <!--切记不要引用其他fastjson类似第三方jar包，很可能出现类找不到异常（尤其fastjson）。
-   如引用fastjson，其他程序（处在tomcat环境中）使用java -agent方式启动，那么是app classloader加载的
-   fastjson，在appclassloader这个类加载器中使用fastjson正常，但是若tomcat中使用fastjson则会报类找不到异常
-   的错，这是因为fastjson只能查找加载fastjson的jar包所在的classloader里面的class，而app classloader遵循双亲委派，
-   所以是不能向下找到tomcat中的类的，因此在tomcat中使用会报错-->
     <dependencies>
+
+        <dependency>
+            <groupId>org.javassist</groupId>
+            <artifactId>javassist</artifactId>
+            <version>3.27.0-GA</version>
+        </dependency>
 
         <dependency>
             <groupId>org.projectlombok</groupId>
@@ -25,7 +25,11 @@
             <version>1.18.12</version>
             <scope>compile</scope>
         </dependency>
-
+        <dependency>
+            <groupId>org.slf4j</groupId>
+            <artifactId>slf4j-simple</artifactId>
+            <version>1.7.26</version>
+        </dependency>
 
         <dependency>
             <groupId>javax.servlet</groupId>
@@ -38,13 +42,6 @@
             <groupId>cn.hutool</groupId>
             <artifactId>hutool-all</artifactId>
             <version>4.6.5</version>
-        </dependency>
-
-        <dependency>
-            <groupId>com.github.mrlawrenc</groupId>
-            <artifactId>agent-boot</artifactId>
-            <version>1.0-RELEASE</version>
-            <scope>compile</scope>
         </dependency>
     </dependencies>
 

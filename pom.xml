@@ -8,9 +8,12 @@
     <artifactId>java-agent-dwow</artifactId>
     <version>1.0-RELEASE</version>
     <modules>
+        <!--专门依赖第三方jar，采用自定义的隔离类加载器加载，防止和被agent插桩的服务冲突-->
+        <module>agent-external-lib</module>
         <module>agent-core</module>
+        <!--agent入口-->
         <module>agent-boot</module>
-       <!-- <module>agent-copy</module>-->
+        <!-- <module>agent-copy</module>-->
     </modules>
     <packaging>pom</packaging>
 

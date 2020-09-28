@@ -8,6 +8,7 @@
         <sourceTestOutputDir name="target/generated-test-sources/test-annotations" />
         <outputRelativeToContentRoot value="true" />
         <module name="agent-core" />
+        <module name="agent-external-lib" />
         <module name="agent-boot" />
         <module name="agent-copy" />
       </profile>
@@ -16,6 +17,7 @@
       <module name="agent-boot" target="8" />
       <module name="agent-copy" target="8" />
       <module name="agent-core" target="8" />
+      <module name="agent-external-lib" target="8" />
       <module name="copy" target="8" />
       <module name="java-agent-dwow" target="1.8" />
     </bytecodeTargetLevel>

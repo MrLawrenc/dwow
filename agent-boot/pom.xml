@@ -12,10 +12,23 @@
     <artifactId>agent-boot</artifactId>
 
     <dependencies>
+
         <dependency>
-            <groupId>com.github.mrlawrenc</groupId>
-            <artifactId>agent-core</artifactId>
-            <version>1.0-RELEASE</version>
+            <groupId>org.javassist</groupId>
+            <artifactId>javassist</artifactId>
+            <version>3.27.0-GA</version>
+        </dependency>
+        <dependency>
+            <groupId>org.slf4j</groupId>
+            <artifactId>slf4j-simple</artifactId>
+            <version>1.7.26</version>
+            <scope>compile</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.projectlombok</groupId>
+            <artifactId>lombok</artifactId>
+            <version>1.18.12</version>
+            <scope>compile</scope>
         </dependency>
     </dependencies>
 
