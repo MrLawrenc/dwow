@@ -97,13 +97,13 @@ public class TransformerService implements ClassFileTransformer {
         ClassPool pool = new ClassPool(true);
         pool.appendClassPath(new LoaderClassPath(loader));
         pool.appendClassPath(new LoaderClassPath(classLoader));
-        //若需要在系统类里面植入代码（即当前loader为app loader的双亲），需要在class pool中加入app loader ，否则无法找到相关植入的类
-        pool.appendClassPath(new ClassClassPath(StackNode.class));
+
 
         CtClass targetClz = pool.get(className.replaceAll("/", "."));
 
         int modifiers = targetClz.getModifiers();
-        if (Modifier.isNative(modifiers) || Modifier.isEnum(modifiers) || Modifier.isInterface(modifiers)) {
+        // 去除接口、注解、枚举、原生、数组等类型的类，以及代理类不解析
+        if (Modifier.isNative(modifiers) || targetClz.isInterface() || targetClz.isAnnotation() || targetClz.isEnum() || targetClz.isPrimitive() || targetClz.isArray() || targetClz.getSimpleName().contains("$")) {
             return new byte[0];
         }
 

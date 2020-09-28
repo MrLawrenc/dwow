@@ -1,12 +1,6 @@
 package com.github.mrlawrenc.attach;
 
-import java.io.File;
-import java.lang.instrument.ClassFileTransformer;
 import java.lang.instrument.Instrumentation;
-import java.lang.reflect.Constructor;
-import java.net.URL;
-import java.util.Objects;
-import java.util.jar.JarFile;
 
 /**
  * @author hz20035009-逍遥
@@ -34,7 +28,7 @@ public class AttachMain {
 
     public static void premain(String agentOps, Instrumentation inst) {
         try {
-            // 0 获取core包位置
+         /*   // 0 获取core包位置
             String userHome = System.getProperty("user.home");
             File[] files = new File(userHome).listFiles((dir, name) -> name.startsWith("agent-core"));
             if (Objects.isNull(files) || files.length != 1) {
@@ -53,7 +47,11 @@ public class AttachMain {
             inst.appendToBootstrapClassLoaderSearch(new JarFile(new File("a")));
 
             // 5
-            inst.addTransformer((ClassFileTransformer) instance, true);
+            inst.addTransformer((ClassFileTransformer) instance, true);*/
+
+
+            inst.addTransformer(new TransformerService(null));
+
         } catch (Exception e) {
             e.printStackTrace();
         }

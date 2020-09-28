@@ -11,6 +11,13 @@
 
     <artifactId>agent-boot</artifactId>
 
+    <dependencies>
+        <dependency>
+            <groupId>com.github.mrlawrenc</groupId>
+            <artifactId>agent-core</artifactId>
+            <version>1.0-RELEASE</version>
+        </dependency>
+    </dependencies>
 
     <build>
         <plugins>

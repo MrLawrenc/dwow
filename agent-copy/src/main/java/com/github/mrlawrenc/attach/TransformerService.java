@@ -80,9 +80,13 @@ public class TransformerService implements ClassFileTransformer {
     @SneakyThrows
     @Override
     public byte[] transform(ClassLoader loader, String className, Class<?> classBeingRedefined, ProtectionDomain protectionDomain, byte[] data) {
-        if (Objects.isNull(className) || className.replaceAll("/", ".").equals(StackNode.class.getName())) {
+        String classFullName = className.replaceAll("/", ".");
+
+        //排除自身包
+        if (classFullName.startsWith("com.github.mrlawrenc.attach")||classFullName.contains("$")) {
             return new byte[0];
         }
+
         ClassPool pool = new ClassPool(true);
         pool.insertClassPath(new LoaderClassPath(loader));
         //若需要在系统类里面植入代码（即当前loader为app loader的双亲），需要在class pool中加入app loader ，否则无法找到相关植入的类
@@ -107,7 +111,8 @@ public class TransformerService implements ClassFileTransformer {
         try {
             if (flag) {
                 CtMethod method = monitor.targetMethod(pool, targetClz);
-                if (Objects.nonNull(method)) {
+
+                if (Objects.nonNull(method) && !method.getName().contains("$")) {
                     log.info("target {}#{}  use monitor:{}", clzName, method.getName(), monitor.getClass().getName());
                     String newMethodName = method.getName() + AGENT_SUFFIX;
                     log.info("start copy new method : {}", newMethodName);
@@ -156,6 +161,9 @@ public class TransformerService implements ClassFileTransformer {
                     if (Modifier.isAbstract(method.getModifiers()) || Modifier.isNative(method.getModifiers())) {
                         continue;
                     }
+                    if (method.getName().contains("$")) {
+                        continue;
+                    }
                     if (STACK_EXCLUDE_METHOD.contains(method.getName())) {
                         continue;
                     }
@@ -170,6 +178,7 @@ public class TransformerService implements ClassFileTransformer {
                     //插入堆栈统计代码
                     log.info("insert stack node : " + className + "#" + methodName);
                     method.insertBefore(STACK_SRC);
+                    return targetClz.toBytecode();
 
                     //也可以使用如下方法插入堆栈
 /*                    method.addLocalVariable("stackTree",pool.get(StackNode.class.getName()));
@@ -184,9 +193,9 @@ public class TransformerService implements ClassFileTransformer {
                             "}";
                     method.insertBefore(src);*/
                 }
-                return targetClz.toBytecode();
+                return new byte[0];
             }
-        } catch (Exception e) {
+        } catch (Throwable e) {
             log.error("error", e);
         }
 
